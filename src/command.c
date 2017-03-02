@@ -179,6 +179,40 @@ void my_mv()
 
 /* LEVEL 3 COMMANDS */
 
+void my_mount()
+{
+	if (myargc == 1) {
+		print_mounttab();
+	} else if (myargc < 3) {
+		printf("mount: missing operand\n");
+	} else {
+		mount(myargs[1], myargs[2]);
+	}
+}
+
+void my_umount()
+{
+	if (myargc == 1) {
+		printf("umount: missing operand\n");
+	} else {
+		umount(myargs[1]);
+	}
+}
+
+void my_switch()
+{
+	int uid;
+	if (myargc == 1) {
+		printf("switch: missing operand\n");	
+	} else if (sscanf(myargs[1], "%u", &uid) < 1) {
+		printf("switch: invalid input\n");
+	} else if (uid >= NPROC) {
+		printf("switch: failed: invalid uid\n");
+	} else {
+		running = &proc[uid];
+	}
+}
+
 /* COMMAND EXECUTION */
 
 static struct {

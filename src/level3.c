@@ -10,59 +10,80 @@
 #include "type.h"
 #include "util.h"
 
+/* UNEXPORTED FUNCTIONS */
+
 static int alloc_mount()
 {
-	int i;
-	for (i = 0; i < NMOUNT; i++) {
-		if (mounttab[i].dev == 0) {
+	for (int i = 0; i < NMOUNT; i++)
+		if (mounttab[i].dev == 0)
 			return i;
-		}
-	}
 	return -1;
 }
 
 static int get_mounted(char *filesys)
 {
-	int i;
-	for (i = 0; i < NMOUNT; i++) {
-		if (strcmp(mounttab[i].name, filesys) == 0) {
+	for (int i = 0; i < NMOUNT; i++)
+		if (strcmp(mounttab[i].name, filesys) == 0)
 			return i;
-		}
-	}
 	return -1;
 }
 
-void my_mount()
+static int is_mount_busy(int dev)
+{
+	for (int i = 0; i < NMINODES; i++) {
+		if (m_inodes[i].dev == dev && m_inodes[i].ino != 2) {
+			printf("inode: %d\n", m_inodes[i].ino);
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/* EXPORTED FUNCTIONS */
+
+/*
+ * print_mounttab:
+ * 
+ * Prints all non-empty entries in the Mount Table to stdout.
+ */
+void print_mounttab()
+{
+	for (int i = 0; i < NMOUNT; i++) {
+		if (mounttab[i].dev) {
+			printf("Name: %s,  ", mounttab[i].name);
+			printf("Mount: %s,  ", mounttab[i].mount_name);
+			printf("Device: %d\n", mounttab[i].dev);
+		}
+	}
+}
+
+/*
+ * mount:
+ * @filesys: The ext2 disk image to mount.
+ * @path: The path to the mount point.
+ *
+ * Mounts a disk image to a mount point within the current file system.
+ */
+void mount(char *filesys, char *path)
 {
 	int fd = -1, tab = -1;
 	int dev, ino;
 	MINODE *mip = NULL;
 	
 	char buf[BLOCK_SIZE];
-	SUPER *s = (SUPER *)buf;
-
-	if (myargc == 1) {
-		int i;
-		for (i = 0; i < NMOUNT; i++) {
-			if (mounttab[i].dev) {
-				printf("Name: %s,  ", mounttab[i].name);
-				printf("Mount: %s,  ", mounttab[i].mount_name);
-				printf("Device: %d\n", mounttab[i].dev);
-			}
-		}
-	} else if (myargc < 3) {
-		printf("mount: missing operand\n");
-	} else if (myargs[2][0] != '/') {
+	SUPER *s = (SUPER *)buf;	
+	
+	if (path[0] != '/') {
 		printf("mount: failed: may only mount relative to root\n");
-	} else if (get_mounted(myargs[1]) >= 0) {
-		printf("mount: failed: '%s' is already mounted\n", myargs[1]);
-	} else if ((fd = open(myargs[1], O_RDWR)) < 0) {
-		printf("mount: failed: could not open '%s'\n", myargs[1]);
-	} else if (get_block(fd, SUPER_BLOCK, (char *)s), s->s_magic != SUPER_MAGIC) {
+	} else if (get_mounted(filesys) >= 0) {
+		printf("mount: failed: '%s' is already mounted\n", filesys);
+	} else if ((fd = open(filesys, O_RDWR)) < 0) {
+		printf("mount: failed: could not open '%s'\n", filesys);
+	} else if (get_block(fd, SUPER_BLOCK, buf), s->s_magic != SUPER_MAGIC) {
 		printf("mount: failed: filesystem is not EXT2\n");
-	} else if (file_mkdir(myargs[2]) < 0) {
+	} else if (file_mkdir(path) < 0) {
 		printf("mount: failed: could not create mount point\n");
-	} else if ((ino = getino(&dev, myargs[2])) == 0) {
+	} else if ((ino = getino(&dev, path)) == 0) {
 		printf("mount: failed: mount point does not exist\n");
 	} else if ((mip = iget(dev, ino)) == 0) {
 		printf("mount: error: inode not found\n");
@@ -87,7 +108,7 @@ void my_mount()
 		mip->mounted = 1;
 		mip->mountptr = m;
 
-		return;
+		return; // exit here so the mount stays open
 	}
 
 	if (mip)
@@ -96,25 +117,17 @@ void my_mount()
 		close(fd);
 }
 
-static int is_mount_busy(int dev)
+/*
+ * umount:
+ * @filesys: The ext2 disk image to unmount.
+ *
+ * Unmounts a currently mounted disk image from the current file system.
+ */
+void umount(char *filesys)
 {
-	int i;
-	for (i = 0; i < NMINODES; i++) {
-		if (m_inodes[i].dev == dev && m_inodes[i].ino != 2) {
-			printf("inode: %d\n", m_inodes[i].ino);
-			return 1;
-		}
-	}
-	return 0;
-}
-
-void my_umount()
-{
-	int tab = -1;
-	if (myargc == 1) {
-		printf("umount: missing operand\n");
-	} else if ((tab = get_mounted(myargs[1])) < 0) {
-		printf("umount: failed: '%s' is not mounted\n", myargs[1]);
+	int tab;
+	if ((tab = get_mounted(myargs[1])) < 0) {
+		printf("umount: failed: '%s' is not mounted\n", filesys);
 	} else if (is_mount_busy(mounttab[tab].dev)) {
 		printf("umount: failed: mount is busy\n");
 	} else {
@@ -134,20 +147,6 @@ void my_umount()
 		m->bmap = 0;
 		m->imap = 0;
 		m->iblk = 0;
-	}
-}
-
-void my_switch()
-{
-	int uid;
-	if (myargc == 1) {
-		printf("switch: missing operand\n");	
-	} else if (sscanf(myargs[1], "%u", &uid) < 1) {
-		printf("switch: invalid input\n");
-	} else if (uid >= NPROC) {
-		printf("switch: failed: invalid uid\n");
-	} else {
-		running = &proc[uid];
 	}
 }
 
