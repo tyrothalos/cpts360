@@ -16,6 +16,7 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	@mkdir -p $(EXE_DIR)
 	$(CC) $(CFLAGS) $(INC_DIR) -o $(TARGET) $(OBJS)
+	@cp diskimage $(EXE_DIR)/diskimage
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)
