@@ -1,7 +1,7 @@
 CC     = cc
 CFLAGS = -g -Wall
 
-EXEC    = myfs
+EXEC    = ext2-sim
 INC_DIR = -I include
 SRC_DIR = src
 OBJ_DIR = build
@@ -22,7 +22,8 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) $(INC_DIR) -c -o $@ $<
 
-.PHONY: clean
 clean:
 	rm -rf $(OBJ_DIR) $(EXE_DIR)
+
+.PHONY: all clean
 
