@@ -3,12 +3,8 @@
 #include <string.h>
 #include <time.h>
 
-#include "alloc_dealloc.h"
-#include "global.h"
 #include "level1.h"
-#include "level2.h"
-#include "type.h"
-#include "util.h"
+#include "project.h"
 
 /* UNEXPORTED FUNCTIONS */
 

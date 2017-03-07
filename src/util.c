@@ -3,10 +3,7 @@
 #include <libgen.h>
 #include <unistd.h>
 
-#include "alloc_dealloc.h"
-#include "global.h"
-#include "type.h"
-#include "util.h"
+#include "project.h"
 
 /* GENERIC BLOCK GETTER */
 

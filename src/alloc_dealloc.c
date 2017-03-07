@@ -2,9 +2,7 @@
 #include <stdlib.h>
 #include <ext2fs/ext2_fs.h>
 
-#include "alloc_dealloc.h"
-#include "type.h"
-#include "util.h"
+#include "project.h"
 
 /*
  * tst_bit:

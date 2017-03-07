@@ -4,13 +4,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "command.h"
-#include "global.h"
 #include "level1.h"
-#include "level2.h"
-#include "level3.h"
-#include "type.h"
-#include "util.h"
+#include "project.h"
 
 void my_quit()
 {

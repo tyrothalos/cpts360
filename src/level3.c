@@ -4,11 +4,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "global.h"
 #include "level1.h"
-#include "level3.h"
-#include "type.h"
-#include "util.h"
+#include "project.h"
 
 /* UNEXPORTED FUNCTIONS */
 

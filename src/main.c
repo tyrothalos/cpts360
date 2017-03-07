@@ -5,10 +5,7 @@
 #include <libgen.h>
 #include <sys/stat.h>
 
-#include "command.h"
-#include "global.h"
-#include "type.h"
-#include "util.h"
+#include "project.h"
 
 /* INITIALIZATION FUNCTIONS */
 

@@ -1,4 +1,4 @@
-#include "global.h"
+#include "project.h"
 
 /* GLOBAL VARIABLE DECLARATIONS */
 OFT    oft[NOFT];

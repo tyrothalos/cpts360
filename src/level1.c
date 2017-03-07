@@ -4,11 +4,8 @@
 #include <libgen.h>
 #include <time.h>
 
-#include "alloc_dealloc.h"
-#include "global.h"
 #include "level1.h"
-#include "type.h"
-#include "util.h"
+#include "project.h"
 
 static void insert_entry(MINODE *mip, int ino, char *name)
 {
