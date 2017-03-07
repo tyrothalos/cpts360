@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <ext2fs/ext2_fs.h>
 
 #include "project.h"
@@ -8,10 +7,9 @@
  * tst_bit:
  * @buf: The buffer of bytes.
  * @bit: Position of the bit to check.
- * 
- * Checks if the bit at the given location in the 
- * given buffer is set.
- * 
+ *
+ * Checks if the bit at the given location in the given buffer is set.
+ *
  * Returns: The value of the bit.
  */
 static int tst_bit(char buf[], int bit)
@@ -21,6 +19,13 @@ static int tst_bit(char buf[], int bit)
 	return buf[i] & (1 << j);
 }
 
+/*
+ * set_bit:
+ * @buf: The buffer of bytes.
+ * @bit: Position of the bit to set.
+ *
+ * Sets the bit at the given location in the given buffer to 1.
+ */
 static void set_bit(char buf[], int bit)
 {
 	int i = bit / 8;
@@ -28,6 +33,13 @@ static void set_bit(char buf[], int bit)
 	buf[i] |= (1 << j);
 }
 
+/*
+ * clr_bit:
+ * @buf: The buffer of bytes.
+ * @bit: Position of the bit to set.
+ *
+ * Sets the bit at the given location in the given buffer to 0.
+ */
 static void clr_bit(char buf[], int bit)
 {
 	int i = bit / 8;
@@ -36,63 +48,35 @@ static void clr_bit(char buf[], int bit)
 }
 
 /*
- * add_inodes:
- * @dev: The file descriptor for the device.
- * @amt: The amount of free inodes to add.
- */
-static void add_inodes(int dev, int amt)
-{
-	char buf[BLOCK_SIZE];
-
-	get_block(dev, SUPER_BLOCK, buf);
-	SUPER *s = (SUPER *)buf;
-	s->s_free_inodes_count += amt;
-	put_block(dev, SUPER_BLOCK, buf);
-	
-	get_block(dev, GD_BLOCK, buf);
-	GD *gd = (GD *)buf;
-	gd->bg_free_inodes_count += amt;
-	put_block(dev, GD_BLOCK, buf);
-}
-
-static void add_blocks(int dev, int amt)
-{
-	char buf[BLOCK_SIZE];
-
-	get_block(dev, SUPER_BLOCK, buf);
-	SUPER *s = (SUPER *)buf;
-	s->s_free_blocks_count += amt;
-	put_block(dev, SUPER_BLOCK, buf);
-	
-	get_block(dev, GD_BLOCK, buf);
-	GD *gd = (GD *)buf;
-	gd->bg_free_blocks_count += amt;
-	put_block(dev, GD_BLOCK, buf);
-}
-
-/*
- * Allocates a new inode and returns its ino
+ * ialloc:
+ * @dev: The device to allocate an inode on.
+ *
+ * Allocates a new inode.
+ *
+ * Returns: 0 if the allocation failed, otherwise the new inode number.
  */
 int ialloc(int dev)
 {
 	char buf1[BLOCK_SIZE];
 	char buf2[BLOCK_SIZE];
-	char map[BLOCK_SIZE];
-
-	get_block(dev, SUPER_BLOCK, buf1);
-	get_block(dev, GD_BLOCK, buf2);
+	char bmap[BLOCK_SIZE];
 
 	SUPER *s = (SUPER *)buf1;
 	GD *gd = (GD *)buf2;
-	
-	get_block(dev, gd->bg_inode_bitmap, map);
 
-	int i;
-	for (i = 0; i < s->s_inodes_count; i++) {
-		if (tst_bit(map, i) == 0) {
-			set_bit(map, i);
-			put_block(dev, gd->bg_inode_bitmap, map);
-			add_inodes(dev, -1);
+	get_block(dev, SUPER_BLOCK, buf1);
+	get_block(dev, GD_BLOCK, buf2);	
+	get_block(dev, gd->bg_inode_bitmap, bmap);
+
+	for (int i = 0; i < s->s_inodes_count; i++) {
+		if (tst_bit(bmap, i) == 0) {
+			set_bit(bmap, i);
+			s->s_free_inodes_count--;
+			gd->bg_free_inodes_count--;
+						
+			put_block(dev, gd->bg_inode_bitmap, bmap);
+			put_block(dev, GD_BLOCK, buf2);
+			put_block(dev, SUPER_BLOCK, buf1);
 
 			return i + 1;
 		}
@@ -102,26 +86,36 @@ int ialloc(int dev)
 	return 0;
 }
 
+/*
+ * balloc:
+ * @dev: The device to allocate a block on.
+ *
+ * Allocates a new empty block.
+ *
+ * Returns: 0 if the allocation failed, otherwise the new block number.
+ */
 int balloc(int dev)
 {
 	char buf1[BLOCK_SIZE];
 	char buf2[BLOCK_SIZE];
 	char bmap[BLOCK_SIZE];
 
-	get_block(dev, SUPER_BLOCK, buf1);
-	get_block(dev, GD_BLOCK, buf2);
-
 	SUPER *s = (SUPER *)buf1;
 	GD *gd = (GD *)buf2;
-	
+
+	get_block(dev, SUPER_BLOCK, buf1);
+	get_block(dev, GD_BLOCK, buf2);	
 	get_block(dev, gd->bg_block_bitmap, bmap);
 
-	int i;
-	for (i = 0; i < s->s_blocks_count; i++) {
+	for (int i = 0; i < s->s_blocks_count; i++) {
 		if (tst_bit(bmap, i) == 0) {
 			set_bit(bmap, i);
+			s->s_free_blocks_count--;
+			gd->bg_free_blocks_count--;
+
 			put_block(dev, gd->bg_block_bitmap, bmap);
-			add_blocks(dev, -1);
+			put_block(dev, GD_BLOCK, buf2);
+			put_block(dev, SUPER_BLOCK, buf1);
 
 			return i + 1;
 		}
@@ -131,6 +125,17 @@ int balloc(int dev)
 	return 0;
 }
 
+/*
+ * idealloc:
+ * @dev: The device to deallocate an inode on.
+ * @ino: The inode number to deallocate.
+ *
+ * Deallocates an inode.
+ *
+ * Returns: 0 if the deallocation succeeded,
+ *         -1 if the given inode number is not valid,
+ *         -2 if the given inode number is not allocated.
+ */
 int idealloc(int dev, int ino)
 {
 	int r = 0;
@@ -138,30 +143,44 @@ int idealloc(int dev, int ino)
 
 	char buf1[BLOCK_SIZE];
 	char buf2[BLOCK_SIZE];
-	char map[BLOCK_SIZE];
-
-	get_block(dev, SUPER_BLOCK, buf1);
-	get_block(dev, GD_BLOCK, buf2);
+	char bmap[BLOCK_SIZE];
 
 	SUPER *s = (SUPER *)buf1;
 	GD *gd = (GD *)buf2;
-	
-	get_block(dev, gd->bg_inode_bitmap, map);
+
+	get_block(dev, SUPER_BLOCK, buf1);
+	get_block(dev, GD_BLOCK, buf2);	
+	get_block(dev, gd->bg_inode_bitmap, bmap);
 
 	if (ino >= s->s_inodes_count) {
 		printf("idealloc(): ino %d out of range %d\n", ino, s->s_inodes_count);
 		r = -1;
-	} else if (tst_bit(map, ino) == 0) {
+	} else if (tst_bit(bmap, ino) == 0) {
 		printf("idealloc(): ino %d is not allocated\n", ino);
 		r = -2;
 	} else {
-		clr_bit(map, ino);
-		put_block(dev, gd->bg_inode_bitmap, map);
-		add_inodes(dev, 1); // must be done AFTER putting
+		clr_bit(bmap, ino);
+		s->s_free_inodes_count++;
+		gd->bg_free_inodes_count++;
+		
+		put_block(dev, gd->bg_inode_bitmap, bmap);
+		put_block(dev, GD_BLOCK, buf2);
+		put_block(dev, SUPER_BLOCK, buf1);
 	}
 	return r;
 }
 
+/*
+ * bdealloc:
+ * @dev: The device to deallocate a block on.
+ * @ino: The block number to deallocate.
+ *
+ * Deallocates a block.
+ *
+ * Returns: 0 if the deallocation succeeded,
+ *         -1 if the given block number is not valid,
+ *         -2 if the given block number is not allocated.
+ */
 int bdealloc(int dev, int bno)
 {
 	int r = 0;
@@ -171,12 +190,11 @@ int bdealloc(int dev, int bno)
 	char buf2[BLOCK_SIZE];
 	char bmap[BLOCK_SIZE];
 	
-	get_block(dev, SUPER_BLOCK, buf1);
-	get_block(dev, GD_BLOCK, buf2);
-	
 	SUPER *s = (SUPER *)buf1;
 	GD *gd = (GD *)buf2;
 	
+	get_block(dev, SUPER_BLOCK, buf1);
+	get_block(dev, GD_BLOCK, buf2);	
 	get_block(dev, gd->bg_block_bitmap, bmap);
 	
 	if (bno >= s->s_blocks_count) {
@@ -186,9 +204,13 @@ int bdealloc(int dev, int bno)
 		printf("bdealloc(): bno %d is not allocated\n", bno);
 		r = -2;
 	} else {
-		clr_bit(bmap, bno);
+		clr_bit(bmap, bno);		
+		s->s_free_blocks_count++;
+		gd->bg_free_blocks_count++;
+		
 		put_block(dev, gd->bg_block_bitmap, bmap);
-		add_blocks(dev, 1);
+		put_block(dev, GD_BLOCK, buf2);
+		put_block(dev, SUPER_BLOCK, buf1);
 	}
 	return r;
 }
