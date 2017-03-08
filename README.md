@@ -1,10 +1,10 @@
-# ext2 file system simulator
+# ext2fs simulator
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 
-> Course project for accessing ext2-formatted disks
+> Final course project for CptS 360 at WSU
 
-This is a course project implementation for final assignment of the CptS 360 course taught at Washington State University. It runs on Linux and operates on ext2-formatted disk images and drives using a basic shell simulation. 
+This is a course project implementation for final assignment of the CptS 360 course taught at Washington State University. It runs on Linux and operates on ext2-formatted disk images and drives using a basic shell simulation.
 
 ## Table of Contents
 
@@ -26,7 +26,7 @@ $ make
 To run the program, change into the bin directory and execute the following:
 
 ```
-$ ./ext2-sim diskimage
+$ ./simulator diskimage
 ```
 
 For additional help, enter `help` while the program is running.

@@ -1,7 +1,7 @@
 CC     = cc
 CFLAGS = -g -Wall
 
-EXEC    = ext2-sim
+EXEC    = simulator
 INC_DIR = -I include
 SRC_DIR = src
 OBJ_DIR = build
@@ -9,7 +9,7 @@ EXE_DIR = bin
 TARGET  = $(EXE_DIR)/$(EXEC)
 
 SRCS := $(foreach s_dir, $(SRC_DIR), $(wildcard $(s_dir)/*.c))
-OBJS := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS)) 
+OBJS := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
 all: $(TARGET)
 
