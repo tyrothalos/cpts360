@@ -12,7 +12,7 @@ static int min(int a, int b)
 	return (a < b) ? a : b;
 }
 
-static int find_proc_fd() 
+static int find_proc_fd()
 {
 	for (int i = 0; i < NFD; i++)
 		if (!running->fd[i])
@@ -34,9 +34,9 @@ static int is_open_read(int ino, int mode)
 		return -1;
 
 	for (int i = 0; i < NOFT; i++) {
-		if (oft[i].inodeptr 
+		if (oft[i].inodeptr
 				&& oft[i].inodeptr->ino == ino
-				&& oft[i].ref_count > 0 
+				&& oft[i].ref_count > 0
 				&& oft[i].mode == 0) {
 			return i;
 		}
@@ -118,7 +118,7 @@ int file_open(char *file, int mode)
 		oft[i].inodeptr = mip;
 
 		running->fd[fd] = &oft[i];
-		
+
 		time_t timer = time(0);
 		switch (mode) {
 			case 1:
@@ -139,13 +139,13 @@ int file_open(char *file, int mode)
 failed:
 	if (mip)
 		iput(mip);
-	return -1;	
+	return -1;
 }
 
 /*
  * file_close:
  * @fd: The file descriptor of the file to close.
- * 
+ *
  * Returns: 1 if the file is successfully closed, otherwise 0.
  */
 int file_close(int fd)
@@ -177,7 +177,7 @@ int file_close(int fd)
  *
  */
 int file_lseek(int fd, int pos)
-{	
+{
 	OFT *op = NULL;
 	if (fd < 0 || fd >= NFD) {
 		printf("lseek: fd is out of range\n");
@@ -211,7 +211,7 @@ int file_read(int fd, char buf[], int n)
 		int bytes = mip->inode.i_size - op->offset;
 		int count = 0;
 		char *cq = buf;
-		
+
 		while ((n > 0) && (bytes > 0)) {
 			int lbk   = op->offset / BLOCK_SIZE;
 			int start = op->offset % BLOCK_SIZE;
@@ -221,7 +221,7 @@ int file_read(int fd, char buf[], int n)
 			} else if (lbk < 12 + 256) {
 				unsigned int ibuf[256];
 				get_block(mip->dev, mip->inode.i_block[12], (char *)ibuf);
-				
+
 				lbk -= 12;
 				blk = ibuf[lbk];
 			} else {
@@ -231,10 +231,10 @@ int file_read(int fd, char buf[], int n)
 				lbk -= (12 + 256);
 				int dblk = dbuf[lbk / 256];
 				int doff = lbk % 256;
-				
+
 				unsigned int ddbuf[256];
 				get_block(mip->dev, dblk, (char *)ddbuf);
-					
+
 				blk = ddbuf[doff];
 			}
 
@@ -246,7 +246,7 @@ int file_read(int fd, char buf[], int n)
 			remain = min(remain, n);
 			remain = min(remain, bytes);
 			memcpy(cq, cp, remain);
-			
+
 			n -= remain;
 			bytes -= remain;
 
@@ -275,11 +275,11 @@ int file_write(int fd, char buf[], int n)
 		MINODE *mip = op->inodeptr;
 		int count = 0;
 		char *cq = buf;
-		
+
 		while (n > 0) {
 			unsigned int lbk   = op->offset / BLOCK_SIZE;
 			unsigned int start = op->offset % BLOCK_SIZE;
-			
+
 			int blk;
 			if (lbk < 12) {
 				blk = get_bno(mip->dev, &mip->inode.i_block[lbk]);
@@ -287,26 +287,26 @@ int file_write(int fd, char buf[], int n)
 				unsigned int ibuf[256];
 				unsigned int indirect = get_bno(mip->dev, &mip->inode.i_block[12]);
 				get_block(mip->dev, indirect, (char *)ibuf);
-				
+
 				lbk -= 12;
 				blk = get_bno(mip->dev, &ibuf[lbk]);
 				put_block(mip->dev, indirect, (char *)ibuf);
-			} else {	
+			} else {
 				unsigned int dbuf[256];
 				unsigned int indirect = get_bno(mip->dev, &mip->inode.i_block[13]);
 				get_block(mip->dev, indirect, (char *)dbuf);
-				
+
 				lbk -= (12 + 256);
 
 				unsigned int ddbuf[256];
 				unsigned int dblk = get_bno(mip->dev, &dbuf[lbk/256]);
 				get_block(mip->dev, dblk, (char *)ddbuf);
-				
+
 				blk = get_bno(mip->dev, &ddbuf[lbk%256]);
 				put_block(mip->dev, dblk, (char *)ddbuf);
 				put_block(mip->dev, indirect, (char *)dbuf);
 			}
-			
+
 			char tmp[BLOCK_SIZE];
 			get_block(mip->dev, blk, tmp);
 			char *cp = tmp + start;
@@ -334,7 +334,7 @@ int file_cp(char *src, char *dst)
 	int r = -1;
 	int fd = -1, gd = -1;
 	int dev, ino;
-	
+
 	if ((fd = file_open(src, 0)) < 0) {
 		printf("cp: failed: cannot open '%s'\n", src);
 	} else if ((ino = getino(&dev, dst)) == 0 && (file_creat(dst) < 0)) {
@@ -348,9 +348,9 @@ int file_cp(char *src, char *dst)
 		int n = 0;
 		while ((n = file_read(fd, buf, BLOCK_SIZE)) > 0) {
 			buf[n] = 0;
-			file_write(gd, buf, n);	
+			file_write(gd, buf, n);
 		}
-		
+
 		r = 0;
 	}
 

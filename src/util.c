@@ -25,8 +25,8 @@ static void inode_get_block(MINODE *mip)
 {
 	int dev = mip->dev;
 	int ino = mip->ino;
-	
-	// get inode's group to find where inode_table is		
+
+	// get inode's group to find where inode_table is
 	char buf[BLOCK_SIZE];
 	get_block(dev, GD_BLOCK, buf);
 	GD *gd = (GD *)buf;
@@ -49,7 +49,7 @@ static void inode_put_block(MINODE *mip)
 	int dev = mip->dev;
 	int ino = mip->ino;
 
-	// get inode's group to find where inode_table is		
+	// get inode's group to find where inode_table is
 	char buf[BLOCK_SIZE];
 	get_block(dev, GD_BLOCK, buf);
 	GD *gd = (GD *)buf;
@@ -89,10 +89,10 @@ int parseargs(char *path, int *dev, char **parent, char **child)
 	char tmp1[256], tmp2[256];
 	strcpy(tmp1, path);
 	strcpy(tmp2, path);
-	
+
 	*parent = strdup(dirname(tmp1));
 	*child = strdup(basename(tmp2));
-	
+
 	int ino;
 	if (strcmp(*parent, ".") == 0) {
 		*dev = running->cwd->dev;
@@ -116,8 +116,8 @@ int search(MINODE *mip, char *name)
 	int i;
 	for (i = 0; i < 12; i++) {
 		get_block(mip->dev, mip->inode.i_block[i], buf);
-	
-		int  len = 0;	
+
+		int  len = 0;
 		char *cp = buf;
 		DIR  *dp = (DIR *)buf;
 		while (len < BLOCK_SIZE) {
@@ -126,10 +126,10 @@ int search(MINODE *mip, char *name)
 
 			strncpy(tmp, dp->name, dp->name_len);
 			tmp[dp->name_len] = 0;
-		
+
 			if (strcmp(tmp, name) == 0)
 				return dp->inode;
-	
+
 			len += dp->rec_len;
 			cp  += dp->rec_len;
 			dp   = (DIR *)cp;
@@ -145,7 +145,7 @@ int has_perm(MINODE *mip, unsigned int perm)
 
 	INODE *ip = &mip->inode;
 	unsigned int mode = ip->i_mode;
-	
+
 	if (ip->i_uid == running->uid) {
 		mode &= 00700;
 		return (((mode >> 6) & perm) == perm);
@@ -249,7 +249,7 @@ int getino(int *dev, char *name)
 			r = -1;
 		} else if ((mip->inode.i_mode & 0xF000) != 0x4000) {
 			r = -2;
-		} else if (mip->ino == 2 
+		} else if (mip->ino == 2
 				&& mip->dev != root->dev
 				&& strcmp(tok[i], "..") == 0) {
 			int i;
@@ -261,8 +261,8 @@ int getino(int *dev, char *name)
 
 			iput(mip);
 			MINODE *m = mounttab[i].mounted_inode;
-			mip = iget(m->dev, m->ino); 
-				
+			mip = iget(m->dev, m->ino);
+
 			ino  = search(mip, "..");
 			*dev = m->dev;
 		} else if ((ino = search(mip, tok[i])) == 0) {
@@ -271,12 +271,12 @@ int getino(int *dev, char *name)
 			// check to see if this ino is mounted
 			iput(mip);
 			mip = iget(*dev, ino);
-			
+
 			if (mip->mounted) {
 				MOUNT *mount = mip->mountptr;
 				iput(mip);
 				mip = iget(mount->dev, 2);
-			
+
 				ino  = 2;
 				*dev = mount->dev;
 			}
@@ -292,7 +292,7 @@ int getino(int *dev, char *name)
 }
 
 /*
- * Returns a pointer to the in memory INODE of 
+ * Returns a pointer to the in memory INODE of
  * (dev, ino). The returned minode is unique (i.e.
  * only one copy in memory). The minode is also
  * locked to prevent use by anything else until
@@ -302,7 +302,7 @@ MINODE *iget(int dev, int ino)
 {
 	MINODE *mip = 0;
 	MINODE *tmp = 0;
-	
+
 	int i;
 	for (i = 0; i < NMINODES; i++) {
 		mip = &m_inodes[i];
@@ -327,9 +327,9 @@ MINODE *iget(int dev, int ino)
 	mip->dev = dev;
 	mip->ino = ino;
 	mip->ref_count = 1;
-	
+
 	inode_get_block(mip);
-	
+
 	return mip;
 }
 

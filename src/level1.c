@@ -14,10 +14,10 @@ static void insert_entry(MINODE *mip, int ino, char *name)
 			break;
 		}
 	}
-	
+
 	char buf[BLOCK_SIZE];
 	get_block(mip->dev, mip->inode.i_block[i], buf);
-	
+
 	int  len = 0;
 	char *cp = buf;
 	DIR  *dp = (DIR *)cp;
@@ -52,7 +52,7 @@ static void insert_entry(MINODE *mip, int ino, char *name)
 
 		put_block(mip->dev, mip->inode.i_block[i], buf);
 	} else {
-		// if there is not enough space, then 
+		// if there is not enough space, then
 		// alloc a new block and use that
 		int bno = balloc(mip->dev);
 		mip->inode.i_block[++i] = bno;
@@ -65,13 +65,13 @@ static void insert_entry(MINODE *mip, int ino, char *name)
 		dp->name_len = strlen(name);
 		strncpy(dp->name, name, dp->name_len);
 		dp->rec_len = BLOCK_SIZE;
-		
+
 		mip->inode.i_size += BLOCK_SIZE;
 		put_block(mip->dev, mip->inode.i_block[i], buf);
 	}
 }
 
-static void help_mknod(int dev, int ino, int bno, 
+static void help_mknod(int dev, int ino, int bno,
 		int mode, int size, int links)
 {
 	MINODE *mip = iget(dev, ino);
@@ -80,10 +80,10 @@ static void help_mknod(int dev, int ino, int bno,
 	ip->i_mode = mode;
 	ip->i_size = size;
 	ip->i_links_count = links;
-	
+
 	ip->i_uid  = running->uid;
 	ip->i_gid  = running->gid;
-	
+
 	time_t timer = time(0);
 	ip->i_ctime = timer;
 	ip->i_atime = timer;
@@ -104,14 +104,14 @@ static void help_mknod(int dev, int ino, int bno,
 static void remove_entry(MINODE *mip, char *name)
 {
 	char buf[BLOCK_SIZE], tmp[256];
-	
+
 	int i;
 	for (i = 0; i < 12; i++) {
 		if (mip->inode.i_block[i] == 0)
 			continue;
 
 		get_block(mip->dev, mip->inode.i_block[i], buf);
-		
+
 		int  len = 0;
 		int  pre = 0;
 		char *cp = buf;
@@ -149,7 +149,7 @@ static void remove_entry(MINODE *mip, char *name)
 
 				dp->rec_len = BLOCK_SIZE - len;
 				put_block(mip->dev, mip->inode.i_block[i], buf);
-			} else { 
+			} else {
 				// case: somewhere in middle of block
 				int offset = dp->rec_len;
 				char *cn = cp + dp->rec_len;
@@ -164,7 +164,7 @@ static void remove_entry(MINODE *mip, char *name)
 					// set to next position to overwrite
 					cp  += dn->rec_len;
 					dp   = (DIR *)cp;
-			
+
 					// set to next values to use for overwrite
 					len += dn->rec_len;
 					cn  += dn->rec_len;
@@ -193,7 +193,7 @@ static void remove_entry(MINODE *mip, char *name)
 static void print_dir_entry(int dev, int ino, char *name)
 {
 	char *perms = "xwrxwrxwr";
-	
+
 	MINODE *mip = iget(dev, ino);
 	if (!mip)
 		return;
@@ -238,7 +238,7 @@ void ls_file(MINODE *mip, char *name)
 {
 	char buf[BLOCK_SIZE];
 	get_block(mip->dev, mip->inode.i_block[0], buf);
-	
+
 	char *cp = buf;
 	DIR  *dp = (DIR *)buf;
 
@@ -251,10 +251,10 @@ void ls_file(MINODE *mip, char *name)
 			print_dir_entry(mip->dev, dp->inode, tmp);
 			return;
 		}
-		
+
 		if (!dp->rec_len)
-				break;	
-			
+				break;
+
 		cp += dp->rec_len;
 		dp = (DIR *)cp;
 	}
@@ -264,7 +264,7 @@ void ls_dir(MINODE *mip)
 {
 	char buf[BLOCK_SIZE];
 	get_block(mip->dev, mip->inode.i_block[0], buf);
-	
+
 	char *cp = buf;
 	DIR  *dp = (DIR *)buf;
 
@@ -274,10 +274,10 @@ void ls_dir(MINODE *mip)
 		tmp[dp->name_len] = 0;
 
 		print_dir_entry(mip->dev, dp->inode, tmp);
-		
+
 		if (!dp->rec_len)
-				break;	
-			
+				break;
+
 		cp += dp->rec_len;
 		dp = (DIR *)cp;
 	}
@@ -288,10 +288,10 @@ void shell_ls(char *path)
 	int dev, pino, cino;
 	char *parent = NULL, *child = NULL;
 	MINODE *pmip = NULL, *cmip = NULL;
-		
-	
+
+
 	if ((pino = parseargs(path, &dev, &parent, &child)) == 0) {
-		printf("ls: failed: path does not exist\n");	
+		printf("ls: failed: path does not exist\n");
 	} else if (pmip = iget(dev, pino), pmip == NULL) {
 		printf("ls: error: inode '%d' not found\n", pino);
 	} else if ((pmip->inode.i_mode & 0xF000) != 0x4000) {
@@ -337,7 +337,7 @@ void shell_cd(char *path)
 		running->cwd = mip;
 		return;
 	}
-	
+
 	if (mip)
 		iput(mip);
 }
@@ -346,14 +346,14 @@ static int print_entry_name(MINODE *mip, int ino)
 {
 	char buf[BLOCK_SIZE], tmp[256];
 	get_block(mip->dev, mip->inode.i_block[0], buf);
-	
+
 	char *cp = buf;
 	DIR  *dp = (DIR *)buf;
 
 	while ((cp < buf + BLOCK_SIZE) && (dp->rec_len > 0)) {
 		strncpy(tmp, dp->name, dp->name_len);
 		tmp[dp->name_len] = 0;
-		
+
 		if (ino == dp->inode) {
 			printf("%s", tmp);
 			return 1;
@@ -372,7 +372,7 @@ static void help_pwd(MINODE *mip)
 
 	int ino = search(mip, "..");
 	MINODE *parent = iget(mip->dev, ino);
-	
+
 	help_pwd(parent);
 	printf("/");
 	print_entry_name(parent, mip->ino);
@@ -387,7 +387,7 @@ void shell_pwd()
 	} else {
 		help_pwd(running->cwd);
 		printf("\n");
-	}	
+	}
 }
 
 static void help_mkdir(MINODE *parent, char *child)
@@ -400,7 +400,7 @@ static void help_mkdir(MINODE *parent, char *child)
 	// ENTERING '.' AND '..' ENTRIES START
 	char buf[BLOCK_SIZE];
 	memset(buf, 0, BLOCK_SIZE);
-	
+
 	int  len = 0;
 	char *cp = buf;
 	DIR  *dp = (DIR *)cp;
@@ -418,7 +418,7 @@ static void help_mkdir(MINODE *parent, char *child)
 	dp->name_len = 2;
 	strncpy(dp->name, "..", 2);
 	dp->rec_len  = BLOCK_SIZE - 12;
-	
+
 	put_block(parent->dev, bno, buf);
 	// ENTERING '.' AND '..' ENTRIES FINISH
 
@@ -429,9 +429,9 @@ int file_mkdir(char *path)
 {
 	int r = -1;
 	int dev, ino;
-	char *parent = NULL, *child = NULL;	
-	MINODE *mip = NULL;	
-	
+	char *parent = NULL, *child = NULL;
+	MINODE *mip = NULL;
+
 	if ((ino = parseargs(path, &dev, &parent, &child)) < 1) {
 		printf("mkdir: failed: path does not exist\n");
 	} else if (mip = iget(dev, ino), mip == NULL) {
@@ -439,10 +439,10 @@ int file_mkdir(char *path)
 	} else if ((mip->inode.i_mode & 0xF000) != 0x4000) {
 		printf("mkdir: %s: Not a directory\n", path);
 	} else if (search(mip, child) != 0) {
-		printf("mkdir: cannot create directory '%s': File exists\n", child);	
+		printf("mkdir: cannot create directory '%s': File exists\n", child);
 	} else {
 		help_mkdir(mip, child);
-		
+
 		mip->inode.i_atime = time(0);
 		mip->inode.i_links_count++;
 		mip->dirty = 1;
@@ -466,7 +466,7 @@ int file_creat(char *path)
 	int dev, ino;
 	char *parent = NULL, *child = NULL;
 	MINODE *mip = NULL;
-	
+
 	if ((ino = parseargs(path, &dev, &parent, &child)) == 0) {
 		printf("creat: failed: path does not exist");
 	} else if (mip = iget(dev, ino), mip == NULL) {
@@ -474,17 +474,17 @@ int file_creat(char *path)
 	} else if ((mip->inode.i_mode & 0xF000) != 0x4000) {
 		printf("creat: %s: Not a directory\n", path);
 	} else if (search(mip, child) != 0) {
-		printf("creat: cannot create file '%s': File exists\n", child);	
+		printf("creat: cannot create file '%s': File exists\n", child);
 	} else {
 		int inum = ialloc(mip->dev);
-		int bnum = balloc(mip->dev);	
-		
+		int bnum = balloc(mip->dev);
+
 		help_mknod(mip->dev, inum, bnum, 0x81A4, 0, 1);
 		char buf[BLOCK_SIZE];
 		memset(buf, 0, BLOCK_SIZE);
 		put_block(mip->dev, bnum, buf);
 		insert_entry(mip, inum, child);
-		
+
 		mip->inode.i_atime = time(0);
 		mip->dirty = 1;
 
@@ -497,7 +497,7 @@ int file_creat(char *path)
 		free(parent);
 	if (child)
 		free(child);
-	
+
 	return r;
 }
 
@@ -514,14 +514,14 @@ static int dir_is_empty(MINODE *mip)
 			continue;
 
 		get_block(mip->dev, mip->inode.i_block[i], buf);
-		
+
 		int  len = 0;
 		char *cp = buf;
 		DIR  *dp = (DIR *)cp;
-		
+
 		while (len < BLOCK_SIZE) {
 			dp->name[dp->name_len] = 0;
-			
+
 			if (!strcmp(dp->name, ".") && !strcmp(dp->name, ".."))
 				return 0;
 
@@ -620,7 +620,7 @@ int file_link(char *src, char *dst)
 	} else {
 		insert_entry(tmip, sino, child);
 		smip->inode.i_links_count++;
-		
+
 		smip->dirty = 1;
 		tmip->dirty = 1;
 
@@ -666,25 +666,25 @@ int file_symlink(char *src, char *dst)
 		printf("symlink: failed: '%s' already exists\n", child);
 	} else {
 		int inum = ialloc(tmip->dev);
-		int bnum = balloc(tmip->dev);	
+		int bnum = balloc(tmip->dev);
 
 		help_mknod(tmip->dev, inum, bnum, 0xA1A4, 0, 1);
 		char buf[BLOCK_SIZE];
 		memset(buf, 0, BLOCK_SIZE);
 		put_block(tmip->dev, bnum, buf);
 		insert_entry(tmip, inum, child);
-			
+
 		tmip->inode.i_atime = time(0);
 		tmip->dirty = 1;
-		
+
 		MINODE *mip = iget(tmip->dev, inum);
 		strncpy((char *)mip->inode.i_block, src, 60);
 		mip->dirty = 1;
 		iput(mip);
-		
+
 		r = 0;
 	}
-	
+
 	if (smip)
 		iput(smip);
 	if (tmip)
@@ -693,7 +693,7 @@ int file_symlink(char *src, char *dst)
 		free(parent);
 	if (child)
 		free(child);
-		
+
 	return r;
 }
 
@@ -721,10 +721,10 @@ int file_unlink(char *path)
 	} else {
 		remove_entry(pmip, child);
 		cmip->inode.i_links_count--;
-		
+
 		if (cmip->inode.i_links_count < 1) {
 			clear_blocks(cmip);
-			idealloc(cmip->dev, cmip->ino);	
+			idealloc(cmip->dev, cmip->ino);
 		}
 
 		pmip->dirty = 1;
@@ -748,8 +748,8 @@ int file_unlink(char *path)
 void shell_readlink(char *path)
 {
 	int dev, ino;
-	MINODE *mip = NULL;	
-	
+	MINODE *mip = NULL;
+
 	if ((ino = getino(&dev, path)) == 0) {
 		printf("readlink: failed: path does not exist\n");
 	} else if (mip = iget(dev, ino), mip == NULL) {
@@ -757,7 +757,7 @@ void shell_readlink(char *path)
 	} else if ((mip->inode.i_mode & 0xF000) != 0xA000) {
 		printf("readlink: failed: '%s' not a symlink\n", path);
 	} else {
-		printf("%s -> %s\n", path, (char *)(mip->inode.i_block));		
+		printf("%s -> %s\n", path, (char *)(mip->inode.i_block));
 	}
 
 	if (mip)
@@ -786,7 +786,7 @@ void shell_stat(char *path)
 		printf("  Mode: 0%o   ", ip->i_mode);
 		printf("   Uid: %d    ", ip->i_uid);
 		printf("   Gid: %d\n", ip->i_gid);
-		
+
 		char buffer[20];
 		time_t inode_time;
 		struct tm *timeinfo;
@@ -795,12 +795,12 @@ void shell_stat(char *path)
 		timeinfo = localtime(&inode_time);
 		strftime(buffer, 20, "%F %H:%M:%S", timeinfo);
 		printf("Access: %s\n", buffer);
-		
+
 		inode_time = ip->i_mtime;
 		timeinfo = localtime(&inode_time);
 		strftime(buffer, 20, "%F %H:%M:%S", timeinfo);
 		printf("Modify: %s\n", buffer);
-		
+
 		inode_time = ip->i_ctime;
 		timeinfo = localtime(&inode_time);
 		strftime(buffer, 20, "%F %H:%M:%S", timeinfo);
@@ -832,7 +832,7 @@ int file_touch(char *path)
 	if (mip)
 		iput(mip);
 
-	return r;	
+	return r;
 }
 
 int file_chmod(int mode, char *path)
@@ -888,14 +888,14 @@ int file_chgrp(int grp, char *path)
 	} else if (mip = iget(dev, ino), mip == NULL) {
 		printf("chgrp: error: inode not found\n");
 	} else {
-		mip->inode.i_gid = grp;		
+		mip->inode.i_gid = grp;
 		mip->dirty = 1;
 		r = 0;
 	}
-	
+
 	if (mip)
 		iput(mip);
-	
+
 	return r;
 }
 

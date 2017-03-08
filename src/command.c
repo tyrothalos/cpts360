@@ -46,7 +46,7 @@ static void my_pwd()
 }
 
 static void my_mkdir()
-{	
+{
 	if (myargc < 2) {
 		printf("mkdir: missing operand\n");
 	} else {
@@ -82,7 +82,7 @@ static void my_rm()
 }
 
 static void my_link()
-{	
+{
 	if (myargc < 3) {
 		printf("link: missing operand\n");
 	} else {
@@ -264,11 +264,11 @@ static void my_write()
 		printf("write: failed: invalid fd\n");
 	} else {
 		int len = strlen(myargs[2]);
-		
+
 		char buf[len+1];
 		strncpy(buf, myargs[2], len);
 		buf[len] = 0;
-		
+
 		int n = file_write(fd, buf, len);
 		printf("wrote %d bytes\n", n);
 	}
@@ -348,7 +348,7 @@ static void my_switch()
 {
 	int uid;
 	if (myargc < 2) {
-		printf("switch: missing operand\n");	
+		printf("switch: missing operand\n");
 	} else if (sscanf(myargs[1], "%u", &uid) < 1) {
 		printf("switch: invalid input\n");
 	} else if (uid >= NPROC) {

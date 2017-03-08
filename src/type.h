@@ -18,7 +18,7 @@ typedef struct ext2_dir_entry_2 DIR;    // need this for new version of e2fs
 #define ROOT_INODE  2
 
 // Default dir and regular file modes
-#define DIR_MODE    0040777 
+#define DIR_MODE    0040777
 #define FILE_MODE   0100644
 #define SUPER_MAGIC  0xEF53
 #define SUPER_USER        0
@@ -54,7 +54,7 @@ typedef struct proc {
 } PROC;
 
 // In-memory inodes structure
-typedef struct minode {	
+typedef struct minode {
 	INODE inode;            // disk inode
 	struct mount *mountptr;
 	int   dev;

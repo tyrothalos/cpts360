@@ -65,7 +65,7 @@ int ialloc(int dev)
 	GD *gd = (GD *)buf2;
 
 	get_block(dev, SUPER_BLOCK, buf1);
-	get_block(dev, GD_BLOCK, buf2);	
+	get_block(dev, GD_BLOCK, buf2);
 	get_block(dev, gd->bg_inode_bitmap, bmap);
 
 	for (int i = 0; i < s->s_inodes_count; i++) {
@@ -73,7 +73,7 @@ int ialloc(int dev)
 			set_bit(bmap, i);
 			s->s_free_inodes_count--;
 			gd->bg_free_inodes_count--;
-						
+
 			put_block(dev, gd->bg_inode_bitmap, bmap);
 			put_block(dev, GD_BLOCK, buf2);
 			put_block(dev, SUPER_BLOCK, buf1);
@@ -104,7 +104,7 @@ int balloc(int dev)
 	GD *gd = (GD *)buf2;
 
 	get_block(dev, SUPER_BLOCK, buf1);
-	get_block(dev, GD_BLOCK, buf2);	
+	get_block(dev, GD_BLOCK, buf2);
 	get_block(dev, gd->bg_block_bitmap, bmap);
 
 	for (int i = 0; i < s->s_blocks_count; i++) {
@@ -149,7 +149,7 @@ int idealloc(int dev, int ino)
 	GD *gd = (GD *)buf2;
 
 	get_block(dev, SUPER_BLOCK, buf1);
-	get_block(dev, GD_BLOCK, buf2);	
+	get_block(dev, GD_BLOCK, buf2);
 	get_block(dev, gd->bg_inode_bitmap, bmap);
 
 	if (ino >= s->s_inodes_count) {
@@ -162,7 +162,7 @@ int idealloc(int dev, int ino)
 		clr_bit(bmap, ino);
 		s->s_free_inodes_count++;
 		gd->bg_free_inodes_count++;
-		
+
 		put_block(dev, gd->bg_inode_bitmap, bmap);
 		put_block(dev, GD_BLOCK, buf2);
 		put_block(dev, SUPER_BLOCK, buf1);
@@ -189,14 +189,14 @@ int bdealloc(int dev, int bno)
 	char buf1[BLOCK_SIZE];
 	char buf2[BLOCK_SIZE];
 	char bmap[BLOCK_SIZE];
-	
+
 	SUPER *s = (SUPER *)buf1;
 	GD *gd = (GD *)buf2;
-	
+
 	get_block(dev, SUPER_BLOCK, buf1);
-	get_block(dev, GD_BLOCK, buf2);	
+	get_block(dev, GD_BLOCK, buf2);
 	get_block(dev, gd->bg_block_bitmap, bmap);
-	
+
 	if (bno >= s->s_blocks_count) {
 		printf("bdealloc(): bno %d out of range %d\n", bno, s->s_blocks_count);
 		r = -1;
@@ -204,10 +204,10 @@ int bdealloc(int dev, int bno)
 		printf("bdealloc(): bno %d is not allocated\n", bno);
 		r = -2;
 	} else {
-		clr_bit(bmap, bno);		
+		clr_bit(bmap, bno);
 		s->s_free_blocks_count++;
 		gd->bg_free_blocks_count++;
-		
+
 		put_block(dev, gd->bg_block_bitmap, bmap);
 		put_block(dev, GD_BLOCK, buf2);
 		put_block(dev, SUPER_BLOCK, buf1);

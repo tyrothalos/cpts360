@@ -51,7 +51,7 @@ int mount_root(char *rootname)
 	get_block(fd, GD_BLOCK, buf2);
 	GD *gd = (GD *)buf2;
 
-	// initialize the root and process working directories	
+	// initialize the root and process working directories
 	root = iget(fd, 2);
 	int i;
 	for (i = 0; i < NPROC; i++) {
@@ -60,9 +60,9 @@ int mount_root(char *rootname)
 	// set running for easier reading
 	running = &proc[0];
 
-	// allocate mount table entry 
+	// allocate mount table entry
 	MOUNT *m = &mounttab[0];
-	m->mounted_inode = root; 
+	m->mounted_inode = root;
 	m->dev = fd;
 	m->nblocks = s->s_blocks_count;
 	m->ninodes = s->s_inodes_count;
@@ -71,12 +71,12 @@ int mount_root(char *rootname)
 	m->iblk = gd->bg_inode_table;
 	strcpy(m->name, rootname);
 	strcpy(m->mount_name, "/");
-	
+
 	root->mounted = 0;
 	root->mountptr = m;
 
 	printf("SUPER magic: %x\n", s->s_magic);
-	printf("bmap: %d, imap: %d, iblk: %d\n", 
+	printf("bmap: %d, imap: %d, iblk: %d\n",
 			m->bmap, m->imap, m->iblk);
 	printf("nblocks: %d, ninodes: %d\n",
 			m->nblocks, m->ninodes);
@@ -93,7 +93,7 @@ int main(int argc, char *argv[], char *env[])
 	}
 
 	disk = argv[1];
-	
+
 	// initialize filesystem
 	if (init() < 0)
 		return 2;
@@ -105,22 +105,22 @@ int main(int argc, char *argv[], char *env[])
 	while (1) {
 		// take input
 		printf("proc uid: %d $ ", running->uid);
-		
+
 		// get using input
 		fgets(input, 256, stdin);
-		input[strcspn(input, "\r\n")] = 0; 
+		input[strcspn(input, "\r\n")] = 0;
 		if (!*input)
 			continue;
 
 		myargc = tokenize(input, " ", myargs);
-		
+
 		int should_close = execute(myargs[0]);
 		if (should_close)
 			break;
 	}
 
 	printf("Quitting filesystem.\n");
-	
+
 	return 0;
 }
 

@@ -39,7 +39,7 @@ static int is_mount_busy(int dev)
 
 /*
  * print_mounttab:
- * 
+ *
  * Prints all non-empty entries in the Mount Table to stdout.
  */
 void print_mounttab()
@@ -65,10 +65,10 @@ void mount(char *filesys, char *path)
 	int fd = -1, tab = -1;
 	int dev, ino;
 	MINODE *mip = NULL;
-	
+
 	char buf[BLOCK_SIZE];
-	SUPER *s = (SUPER *)buf;	
-	
+	SUPER *s = (SUPER *)buf;
+
 	if (path[0] != '/') {
 		printf("mount: failed: may only mount relative to root\n");
 	} else if (get_mounted(filesys) >= 0) {
@@ -91,7 +91,7 @@ void mount(char *filesys, char *path)
 		GD *gd = (GD *)tmp;
 
 		MOUNT *m = &mounttab[tab];
-		m->mounted_inode = mip; 
+		m->mounted_inode = mip;
 		m->dev = fd;
 		m->nblocks = s->s_blocks_count;
 		m->ninodes = s->s_inodes_count;
@@ -130,11 +130,11 @@ void umount(char *filesys)
 		MOUNT *m = &mounttab[tab];
 		m->name[0] = 0;
 		m->mount_name[0] = 0;
-		m->mounted_inode->mounted = 0; 
+		m->mounted_inode->mounted = 0;
 
 		close(m->dev);
 		m->dev = 0;
-		
+
 		iput(m->mounted_inode);
 		m->mounted_inode = 0;
 
