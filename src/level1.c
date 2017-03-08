@@ -4,7 +4,6 @@
 #include <libgen.h>
 #include <time.h>
 
-#include "level1.h"
 #include "project.h"
 
 static void insert_entry(MINODE *mip, int ino, char *name)
@@ -191,10 +190,6 @@ static void remove_entry(MINODE *mip, char *name)
 	}
 }
 
-/* LEVEL ONE COMMANDS */
-
-/* LS COMMAND */
-
 static void print_dir_entry(int dev, int ino, char *name)
 {
 	char *perms = "xwrxwrxwr";
@@ -288,13 +283,12 @@ void ls_dir(MINODE *mip)
 	}
 }
 
-void my_ls()
+void shell_ls(char *path)
 {
 	int dev, pino, cino;
 	char *parent = NULL, *child = NULL;
 	MINODE *pmip = NULL, *cmip = NULL;
-	
-	char *path = (myargc > 1) ? myargs[1] : ".";
+		
 	
 	if ((pino = parseargs(path, &dev, &parent, &child)) == 0) {
 		printf("ls: failed: path does not exist\n");	
@@ -322,24 +316,22 @@ void my_ls()
 		free(child);
 }
 
-/* CD COMMAND */
-
-void my_cd()
+void shell_cd(char *path)
 {
 	int dev, ino;
 	MINODE *mip = NULL;
 
-	if (myargc == 1) {
+	if (path == NULL) {
 		iput(running->cwd);
 		running->cwd= root;
 		root->ref_count++;
 		return;
-	} else if ((ino = getino(&dev, myargs[1])) == 0) {
+	} else if ((ino = getino(&dev, path)) == 0) {
 		printf("cd: failed: path does not exist\n");
 	} else if (mip = iget(dev, ino), mip == NULL) {
 		printf("cd: error: inode not found\n");
 	} else if ((mip->inode.i_mode & 0xF000) != 0x4000) {
-		printf("cd: failed: '%s' is not a directory\n", myargs[1]);
+		printf("cd: failed: '%s' is not a directory\n", path);
 	} else {
 		iput(running->cwd);
 		running->cwd = mip;
@@ -349,8 +341,6 @@ void my_cd()
 	if (mip)
 		iput(mip);
 }
-
-/* PWD COMMAND */
 
 static int print_entry_name(MINODE *mip, int ino)
 {
@@ -390,7 +380,7 @@ static void help_pwd(MINODE *mip)
 	iput(parent);
 }
 
-void my_pwd()
+void shell_pwd()
 {
 	if (running->cwd == root) {
 		printf("/\n");
@@ -399,8 +389,6 @@ void my_pwd()
 		printf("\n");
 	}	
 }
-
-/* MKDIR COMMAND */
 
 static void help_mkdir(MINODE *parent, char *child)
 {
@@ -472,17 +460,6 @@ int file_mkdir(char *path)
 	return r;
 }
 
-void my_mkdir()
-{	
-	if (myargc == 1) {
-		printf("mkdir: missing operand\n");
-	} else {
-		file_mkdir(myargs[1]);
-	}
-}
-
-/* CREAT COMMAND */
-
 int file_creat(char *path)
 {
 	int r = -1;
@@ -523,17 +500,6 @@ int file_creat(char *path)
 	
 	return r;
 }
-
-void my_creat()
-{
-	if (myargc == 1) {
-		printf("creat: missing operand\n");
-	} else {
-		file_creat(myargs[1]);
-	}
-}
-
-/* RMDIR COMMAND */
 
 static int dir_is_empty(MINODE *mip)
 {
@@ -628,24 +594,6 @@ int file_rmdir(char *path)
 	return r;
 }
 
-void my_rmdir()
-{
-	if (myargc == 1) {
-		printf("rmdir: missing operand\n");
-	} else {
-		file_rmdir(myargs[1]);
-	}
-}
-
-/* RM COMMAND */
-
-void my_rm()
-{
-	my_unlink();
-}
-
-/* LINK COMMAND */
-
 int file_link(char *src, char *dst)
 {
 	int r = -1;
@@ -691,34 +639,22 @@ int file_link(char *src, char *dst)
 	return r;
 }
 
-void my_link()
-{	
-	if (myargc < 3) {
-		printf("link: missing operand\n");
-	} else {
-		file_link(myargs[1], myargs[2]);
-	}
-}
-
-/* SYMLINK COMMAND */
-
-void my_symlink()
+int file_symlink(char *src, char *dst)
 {
+	int r = -1;
 	int sdev, tdev, sino, tino;
 	char *parent = NULL, *child = NULL;
 	MINODE *smip = NULL, *tmip = NULL;
 
-	if (myargc < 3) {
-		printf("symlink: missing operand\n");
-	} else if (strlen(myargs[1]) >= 60) {
+	if (strlen(src) >= 60) {
 		printf("symlink: failed: source path too long\n");
-	} else if ((sino = getino(&sdev, myargs[1])) == 0) {
+	} else if ((sino = getino(&sdev, src)) == 0) {
 		printf("symlink: failed: source path does not exist\n");
 	} else if (smip = iget(sdev, sino), smip == NULL) {
 		printf("symlink: error: source inode not found\n");
 	} else if ((smip->inode.i_mode & 0xF000) == 0xA000) {
 		printf("symlink: failed: must be directory or regular file\n");
-	} else if ((tino = parseargs(myargs[2], &tdev, &parent, &child)) == 0) {
+	} else if ((tino = parseargs(dst, &tdev, &parent, &child)) == 0) {
 		printf("symlink: failed: target path does not exist\n");
 	} else if (sdev != tdev) {
 		printf("symlink: failed: both paths must be on the same device\n");
@@ -728,7 +664,7 @@ void my_symlink()
 		printf("symlink: failed: '%s' is not a directory\n", parent);
 	} else if (search(tmip, child) != 0) {
 		printf("symlink: failed: '%s' already exists\n", child);
-	} else {	
+	} else {
 		int inum = ialloc(tmip->dev);
 		int bnum = balloc(tmip->dev);	
 
@@ -742,9 +678,11 @@ void my_symlink()
 		tmip->dirty = 1;
 		
 		MINODE *mip = iget(tmip->dev, inum);
-		strncpy((char *)mip->inode.i_block, myargs[1], 60);
+		strncpy((char *)mip->inode.i_block, src, 60);
 		mip->dirty = 1;
 		iput(mip);
+		
+		r = 0;
 	}
 	
 	if (smip)
@@ -755,32 +693,9 @@ void my_symlink()
 		free(parent);
 	if (child)
 		free(child);
+		
+	return r;
 }
-
-/* READLINK COMMAND*/
-
-void my_readlink()
-{
-	int dev, ino;
-	MINODE *mip = NULL;
-
-	if (myargc == 1) {
-		printf("readlink: missing operand\n");
-	} else if ((ino = getino(&dev, myargs[1])) == 0) {
-		printf("readlink: failed: path does not exist\n");
-	} else if (mip = iget(dev, ino), mip == NULL) {
-		printf("readlink: error: inode not found\n");
-	} else if ((mip->inode.i_mode & 0xF000) != 0xA000) {
-		printf("readlink: failed: '%s' not a symlink\n", myargs[1]);
-	} else {
-		printf("%s -> %s\n", myargs[1], (char *)(mip->inode.i_block));		
-	}
-
-	if (mip)
-		iput(mip);
-}
-
-/* UNLINK COMMAND */
 
 int file_unlink(char *path)
 {
@@ -830,32 +745,38 @@ int file_unlink(char *path)
 	return r;
 }
 
-void my_unlink()
+void shell_readlink(char *path)
 {
-	if (myargc == 1) {
-		printf("unlink: missing operand\n");
+	int dev, ino;
+	MINODE *mip = NULL;	
+	
+	if ((ino = getino(&dev, path)) == 0) {
+		printf("readlink: failed: path does not exist\n");
+	} else if (mip = iget(dev, ino), mip == NULL) {
+		printf("readlink: error: inode not found\n");
+	} else if ((mip->inode.i_mode & 0xF000) != 0xA000) {
+		printf("readlink: failed: '%s' not a symlink\n", path);
 	} else {
-		file_unlink(myargs[1]);
+		printf("%s -> %s\n", path, (char *)(mip->inode.i_block));		
 	}
+
+	if (mip)
+		iput(mip);
 }
 
-/* STAT COMMAND */
-
-void my_stat()
+void shell_stat(char *path)
 {
 	int dev, ino;
 	MINODE *mip = NULL;
 
-	if (myargc == 1) {
-		printf("stat: missing operand\n");
-	} else if ((ino = getino(&dev, myargs[1])) == 0) {
+	if ((ino = getino(&dev, path)) == 0) {
 		printf("stat: failed: path does not exist\n");
 	} else if (mip = iget(dev, ino), mip == NULL) {
 		printf("stat: error: inode not found\n");
 	} else {
 		INODE *ip = &(mip->inode);
 
-		char *name = basename(myargs[1]);
+		char *name = basename(path);
 		printf("  File: '%s'\n", name);
 		printf("Device: %d    ", dev);
 		printf(" Inode: %d\n", ino);
@@ -890,106 +811,91 @@ void my_stat()
 		iput(mip);
 }
 
-/* TOUCH COMMAND */
-
-void my_touch()
+int file_touch(char *path)
 {
+	int r = -1;
 	int dev, ino;
 	MINODE *mip = NULL;
-
-	if (myargc == 1) {
-		printf("touch: missing operand\n");
-	} else if ((ino = getino(&dev, myargs[1])) == 0) {
-		file_creat(myargs[1]);
+	if ((ino = getino(&dev, path)) == 0) {
+		file_creat(path);
+		r = 0;
 	} else if (mip = iget(dev, ino), mip == NULL) {
 		printf("touch: error: inode not found\n");
 	} else {
 		time_t timer = time(0);
 		mip->inode.i_atime = timer;
 		mip->inode.i_mtime = timer;
-		
 		mip->dirty = 1;
+		r = 0;
 	}
 
 	if (mip)
 		iput(mip);
+
+	return r;	
 }
 
-/* CHMOD COMMAND */
-
-void my_chmod()
+int file_chmod(int mode, char *path)
 {
-	int dev, ino, mode;
+	int r = -1;
+	int dev, ino;
 	MINODE *mip = NULL;
-
-	if (myargc < 3) {
-		printf("chmod: missing operand");
-	} else if (sscanf(myargs[1], "%o", &mode) < 1) {
-		printf("chmod: failed: invalid input\n");
-	} else if (mode > 0777) {
-		printf("chmod: failed: invalid permission input\n");
-	} else if ((ino = getino(&dev, myargs[2])) == 0) {
+	if ((ino = getino(&dev, path)) == 0) {
 		printf("chmod: failed: path does not exist\n");
 	} else if (mip = iget(dev, ino), mip == NULL) {
 		printf("chmod: error: inode not found\n");
 	} else {
 		mip->inode.i_mode &= 0xF000;
 		mip->inode.i_mode += mode;
-		
 		mip->dirty = 1;
+		r = 0;
 	}
 
 	if (mip)
 		iput(mip);
+
+	return r;
 }
 
-/* CHOWN COMMAND */
-
-void my_chown()
+int file_chown(int own, char *path)
 {
-	int dev, ino, own;
+	int r = -1;
+	int dev, ino;
 	MINODE *mip = NULL;
-
-	if (myargc < 3) {
-		printf("chown: missing operand");
-	} else if (sscanf(myargs[1], "%d", &own) < 1) {
-		printf("chown: failed: invalid input\n");
-	} else if ((ino = getino(&dev, myargs[2])) == 0) {
+	if ((ino = getino(&dev, path)) == 0) {
 		printf("chown: failed: path does not exist\n");
 	} else if (mip = iget(dev, ino), mip == NULL) {
 		printf("chown: error: inode not found\n");
 	} else {
 		mip->inode.i_uid = own;
-		
 		mip->dirty = 1;
+		r = 0;
 	}
 
 	if (mip)
 		iput(mip);
+
+	return r;
 }
 
-/* CHGRP COMMAND */
-
-void my_chgrp()
+int file_chgrp(int grp, char *path)
 {
-	int dev, ino, grp;
+	int r = -1;
+	int dev, ino;
 	MINODE *mip = NULL;
-
-	if (myargc < 3) {
-		printf("chgrp: missing operand");
-	} else if (sscanf(myargs[1], "%d", &grp) < 1) {
-		printf("chgrp: failed: invalid input\n");
-	} else if ((ino = getino(&dev, myargs[2])) == 0) {
+	if ((ino = getino(&dev, path)) == 0) {
 		printf("chgrp: failed: path does not exist\n");
 	} else if (mip = iget(dev, ino), mip == NULL) {
 		printf("chgrp: error: inode not found\n");
 	} else {
-		mip->inode.i_gid = grp;
-		
+		mip->inode.i_gid = grp;		
 		mip->dirty = 1;
+		r = 0;
 	}
-
+	
 	if (mip)
 		iput(mip);
+	
+	return r;
 }
 

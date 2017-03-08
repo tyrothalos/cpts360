@@ -27,6 +27,26 @@ int bdealloc(int dev, int bno);
 
 int execute(char *cmd);
 
+/* LEVEL 1 FUNCTIONS */
+
+int file_mkdir(char *path);
+int file_rmdir(char *path);
+int file_creat(char *path);
+int file_link(char *src, char *dst);
+int file_symlink(char *src, char *dst);
+int file_unlink(char *path);
+
+void shell_readlink(char *path);
+void shell_ls(char *path);
+void shell_cd(char *path);
+void shell_pwd();
+void shell_stat(char *path);
+
+int file_touch(char *path);
+int file_chmod(int mode, char *path);
+int file_chown(int own,  char *path);
+int file_chgrp(int grp,  char *path);
+
 /* LEVEL 2 FUNCTIONS */
 
 int file_open(char *file, int mode);

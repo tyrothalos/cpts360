@@ -4,10 +4,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "level1.h"
 #include "project.h"
 
-void my_quit()
+static void my_quit()
 {
 	printf("Cleaning up before closing filesystem...\n");
 	int i;
@@ -23,10 +22,161 @@ void my_quit()
 
 /* LEVEL 1 COMMANDS */
 
+static void my_ls()
+{
+	if (myargc < 2) {
+		shell_ls(".");
+	} else {
+		shell_ls(myargs[1]);
+	}
+}
+
+static void my_cd()
+{
+	if (myargc < 2) {
+		shell_cd(NULL);
+	} else {
+		shell_cd(myargs[1]);
+	}
+}
+
+static void my_pwd()
+{
+	shell_pwd();
+}
+
+static void my_mkdir()
+{	
+	if (myargc < 2) {
+		printf("mkdir: missing operand\n");
+	} else {
+		file_mkdir(myargs[1]);
+	}
+}
+
+static void my_creat()
+{
+	if (myargc < 2) {
+		printf("creat: missing operand\n");
+	} else {
+		file_creat(myargs[1]);
+	}
+}
+
+static void my_rmdir()
+{
+	if (myargc < 2) {
+		printf("rmdir: missing operand\n");
+	} else {
+		file_rmdir(myargs[1]);
+	}
+}
+
+static void my_rm()
+{
+	if (myargc < 2) {
+		printf("rm: missing operand\n");
+	} else {
+		file_unlink(myargs[1]);
+	}
+}
+
+static void my_link()
+{	
+	if (myargc < 3) {
+		printf("link: missing operand\n");
+	} else {
+		file_link(myargs[1], myargs[2]);
+	}
+}
+
+static void my_symlink()
+{
+	if (myargc < 3) {
+		printf("symlink: missing operand\n");
+	} else {
+		file_symlink(myargs[1], myargs[2]);
+	}
+}
+
+static void my_unlink()
+{
+	if (myargc < 2) {
+		printf("unlink: missing operand\n");
+	} else {
+		file_unlink(myargs[1]);
+	}
+}
+
+static void my_readlink()
+{
+	if (myargc < 2) {
+		printf("readlink: missing operand\n");
+	} else {
+		shell_readlink(myargs[1]);
+	}
+}
+
+static void my_stat()
+{
+	if (myargc < 2) {
+		printf("stat: missing operand\n");
+	} else {
+		shell_stat(myargs[1]);
+	}
+}
+
+static void my_touch()
+{
+	if (myargc < 2) {
+		printf("touch: missing operand\n");
+	} else {
+		file_touch(myargs[1]);
+	}
+}
+
+static void my_chmod()
+{
+	int mode;
+	if (myargc < 3) {
+		printf("chmod: missing operand");
+	} else if (sscanf(myargs[1], "%o", &mode) < 1) {
+		printf("chmod: failed: invalid input\n");
+	} else if (mode > 0777) {
+		printf("chmod: failed: invalid permission input\n");
+	} else {
+		file_chmod(mode, myargs[2]);
+	}
+}
+
+
+static void my_chown()
+{
+	int own;
+	if (myargc < 3) {
+		printf("chown: missing operand");
+	} else if (sscanf(myargs[1], "%d", &own) < 1) {
+		printf("chown: failed: invalid input\n");
+	} else {
+		file_chown(own, myargs[2]);
+	}
+}
+
+static void my_chgrp()
+{
+	int grp;
+	if (myargc < 3) {
+		printf("chgrp: missing operand");
+	} else if (sscanf(myargs[1], "%d", &grp) < 1) {
+		printf("chgrp: failed: invalid input\n");
+	} else {
+		file_chgrp(grp, myargs[2]);
+	}
+}
+
 /* LEVEL 2 COMMANDS */
 
-
-void my_open()
+static void my_open()
 {
 	int mode;
 	if (myargc < 3) {
@@ -42,10 +192,10 @@ void my_open()
 	}
 }
 
-void my_close()
+static void my_close()
 {
 	int fd;
-	if (myargc == 1) {
+	if (myargc < 2) {
 		printf("close: missing operand\n");
 	} else if (sscanf(myargs[1], "%u", &fd) < 1) {
 		printf("close: failed: invalid input\n");
@@ -56,7 +206,7 @@ void my_close()
 	}
 }
 
-void my_lseek()
+static void my_lseek()
 {
 	int fd, pos;
 	if (myargc < 3) {
@@ -72,7 +222,7 @@ void my_lseek()
 	}
 }
 
-void my_pfd()
+static void my_pfd()
 {
 	printf("fd  mode    offset  ref_count  INODE\n");
 	printf("--  ----  --------  ---------  -----\n");
@@ -88,15 +238,15 @@ void my_pfd()
 	}
 }
 
-void my_read()
+static void my_read()
 {
 	int fd, bytes;
 	if (myargc < 3) {
 		printf("read: missing operand\n");
 	} else if (sscanf(myargs[1], "%u", &fd) < 1) {
-		printf("lseek: failed: invalid fd\n");
+		printf("read: failed: invalid fd\n");
 	} else if (sscanf(myargs[2], "%u", &bytes) < 1) {
-		printf("lseek: failed: invalid bytes\n");
+		printf("read: failed: invalid bytes\n");
 	} else {
 		char buf[bytes];
 		int n = file_read(fd, buf, bytes);
@@ -105,13 +255,13 @@ void my_read()
 	}
 }
 
-void my_write()
+static void my_write()
 {
 	int fd;
 	if (myargc < 3) {
-		printf("read: missing operand\n");
+		printf("write: missing operand\n");
 	} else if (sscanf(myargs[1], "%u", &fd) < 1) {
-		printf("read: failed: invalid fd\n");
+		printf("write: failed: invalid fd\n");
 	} else {
 		int len = strlen(myargs[2]);
 		
@@ -126,10 +276,10 @@ void my_write()
 
 /* CAT COMMAND */
 
-void my_cat()
+static void my_cat()
 {
 	int fd = -1;
-	if (myargc == 1) {
+	if (myargc < 2) {
 		printf("cat: missing operand\n");
 	} else if ((fd = file_open(myargs[1], 0)) < 0) {
 		printf("cat: failed: could not open file\n");
@@ -154,7 +304,7 @@ void my_cat()
 		file_close(fd);
 }
 
-void my_cp()
+static void my_cp()
 {
 	if (myargc < 3) {
 		printf("cp: missing operand\n");
@@ -163,7 +313,7 @@ void my_cp()
 	}
 }
 
-void my_mv()
+static void my_mv()
 {
 	if (myargc < 3) {
 		printf("mv: missing operand\n");
@@ -174,9 +324,9 @@ void my_mv()
 
 /* LEVEL 3 COMMANDS */
 
-void my_mount()
+static void my_mount()
 {
-	if (myargc == 1) {
+	if (myargc < 2) {
 		print_mounttab();
 	} else if (myargc < 3) {
 		printf("mount: missing operand\n");
@@ -185,19 +335,19 @@ void my_mount()
 	}
 }
 
-void my_umount()
+static void my_umount()
 {
-	if (myargc == 1) {
+	if (myargc < 2) {
 		printf("umount: missing operand\n");
 	} else {
 		umount(myargs[1]);
 	}
 }
 
-void my_switch()
+static void my_switch()
 {
 	int uid;
-	if (myargc == 1) {
+	if (myargc < 2) {
 		printf("switch: missing operand\n");	
 	} else if (sscanf(myargs[1], "%u", &uid) < 1) {
 		printf("switch: invalid input\n");
@@ -246,8 +396,12 @@ static struct {
 };
 
 /*
- * Returns whether or not the program
- * should stop running (1 for yes, 0 for no).
+ * execute:
+ * @cmd: The name of the command to execute.
+ *
+ * Executes the command with the given name, if it exists.
+ *
+ * Returns: 1 if the program should quit, 0 otherwise.
  */
 int execute(char *cmd)
 {
