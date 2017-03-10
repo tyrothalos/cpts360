@@ -9,23 +9,20 @@
 
 /* INITIALIZATION FUNCTIONS */
 
-int init()
+void init()
 {
-	int i;
-	for (i = 0; i < NPROC; i++) {
+	for (int i = 0; i < NPROC; i++) {
 		proc[i].uid = i;
 		proc[i].gid = i;
 		proc[i].pid = i + 1;
 		proc[i].cwd = 0;
 	}
 
-	for (i = 0; i < NMINODES; i++) {
+	for (int i = 0; i < NMINODES; i++) {
 		m_inodes[i].ref_count = 0;
 	}
 
 	root = 0;
-
-	return 0;
 }
 
 int mount_root(char *rootname)
@@ -85,42 +82,21 @@ int mount_root(char *rootname)
 
 int main(int argc, char *argv[], char *env[])
 {
-	char *disk;
-
+	int r = 0;
 	if (argc < 2) {
 		printf("usage: myfs <device>");
-		return 1;
+	} else if (init(), mount_root(argv[1]) < 0) {
+		r = -1;
+	} else {
+		// begin main loop; takes user input
+		char input[256];
+		do {
+			printf("proc uid: %d $ ", running->uid);
+			fgets(input, 256, stdin);
+			input[strcspn(input, "\r\n")] = 0;
+		} while (execute(input));
+		printf("Quitting filesystem.\n");
 	}
-
-	disk = argv[1];
-
-	// initialize filesystem
-	if (init() < 0)
-		return 2;
-	if (mount_root(disk) < 0)
-		return 3;
-
-	// begin main loop; takes user input
-	char input[256];
-	while (1) {
-		// take input
-		printf("proc uid: %d $ ", running->uid);
-
-		// get using input
-		fgets(input, 256, stdin);
-		input[strcspn(input, "\r\n")] = 0;
-		if (!*input)
-			continue;
-
-		myargc = tokenize(input, " ", myargs);
-
-		int should_close = execute(myargs[0]);
-		if (should_close)
-			break;
-	}
-
-	printf("Quitting filesystem.\n");
-
-	return 0;
+	return r;
 }
 

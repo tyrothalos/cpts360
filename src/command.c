@@ -358,22 +358,27 @@ static struct {
 
 /*
  * execute:
- * @cmd: The name of the command to execute.
+ * @input: The line of input from the commandline.
  *
- * Executes the command with the given name, if it exists.
+ * Executes the input from the commandline.
  *
- * Returns: 1 if the program should quit, 0 otherwise.
+ * Returns: 0 if the program should quit, 1 otherwise.
  */
-int execute(char *cmd)
+int execute(char *input)
 {
+	if (!*input)
+		return 1;
+
+	myargc = tokenize(input, " ", myargs);
+
 	int len = sizeof(commands) / sizeof(commands[0]);
 	for (int i = 0; i < len; i++) {
-		if (strcmp(cmd, commands[i].name) == 0) {
+		if (strcmp(myargs[0], commands[i].name) == 0) {
 			commands[i].func();
-			return (i == 0);
+			return (i != 0);
 		}
 	}
-	printf("%s: command not found\n", cmd);
-	return 0;
+	printf("%s: command not found\n", myargs[0]);
+	return 1;
 }
 
