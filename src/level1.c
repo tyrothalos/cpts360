@@ -840,7 +840,9 @@ int file_chmod(int mode, char *path)
 	int r = -1;
 	int dev, ino;
 	MINODE *mip = NULL;
-	if ((ino = getino(&dev, path)) == 0) {
+	if (mode > 0777) {
+		printf("chmod: failed: invalid permission input\n");
+	} else if ((ino = getino(&dev, path)) == 0) {
 		printf("chmod: failed: path does not exist\n");
 	} else if (mip = iget(dev, ino), mip == NULL) {
 		printf("chmod: error: inode not found\n");

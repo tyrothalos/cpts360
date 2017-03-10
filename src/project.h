@@ -55,9 +55,13 @@ int file_close(int fd);
 
 int file_lseek(int fd, int pos);
 
+void shell_pfd();
+
 int file_read(int fd, char buf[], int n);
 
 int file_write(int fd, char buf[], int n);
+
+void shell_cat(char *path);
 
 int file_cp(char *src, char *dst);
 
@@ -70,6 +74,8 @@ void print_mounttab();
 void mount(char *filesys, char *path);
 
 void umount(char *filesys);
+
+void pswitch(int uid);
 
 #endif
 

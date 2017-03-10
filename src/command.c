@@ -8,16 +8,15 @@
 
 static void my_quit()
 {
-	printf("Cleaning up before closing filesystem...\n");
-	int i;
-	for (i = 0; i < NMINODES; i++) {
+	printf("Cleaning up before closing filesystem... ");
+	for (int i = 0; i < NMINODES; i++) {
 		if (m_inodes[i].ref_count > 0) {
 			// set refs to 1 so iput will save
 			m_inodes[i].ref_count = 1;
 			iput(&m_inodes[i]);
 		}
 	}
-	printf("Finished cleaning up!\n");
+	printf("Done!\n");
 }
 
 /* LEVEL 1 COMMANDS */
@@ -142,8 +141,6 @@ static void my_chmod()
 		printf("chmod: missing operand");
 	} else if (sscanf(myargs[1], "%o", &mode) < 1) {
 		printf("chmod: failed: invalid input\n");
-	} else if (mode > 0777) {
-		printf("chmod: failed: invalid permission input\n");
 	} else {
 		file_chmod(mode, myargs[2]);
 	}
@@ -183,8 +180,6 @@ static void my_open()
 		printf("open: missing operand\n");
 	} else if (sscanf(myargs[2], "%u", &mode) < 1) {
 		printf("open: failed: invalid input\n");
-	} else if (mode < 0 || mode > 3) {
-		printf("open: failed: invalid mode input\n");
 	} else {
 		int fd = file_open(myargs[1], mode);
 		if (fd >= 0)
@@ -224,18 +219,7 @@ static void my_lseek()
 
 static void my_pfd()
 {
-	printf("fd  mode    offset  ref_count  INODE\n");
-	printf("--  ----  --------  ---------  -----\n");
-
-	int i;
-	for (i = 0; i < NFD; i++) {
-		if (running->fd[i]) {
-			OFT *op = running->fd[i];
-			printf("%2d  %4d  %8d   %8d  [%d, %d]\n",
-					i, op->mode, op->offset, op->ref_count,
-					op->inodeptr->dev, op->inodeptr->ino);
-		}
-	}
+	shell_pfd();
 }
 
 static void my_read()
@@ -274,34 +258,13 @@ static void my_write()
 	}
 }
 
-/* CAT COMMAND */
-
 static void my_cat()
 {
-	int fd = -1;
 	if (myargc < 2) {
 		printf("cat: missing operand\n");
-	} else if ((fd = file_open(myargs[1], 0)) < 0) {
-		printf("cat: failed: could not open file\n");
 	} else {
-		char buf[BLOCK_SIZE+1];
-		buf[BLOCK_SIZE] = 0;
-
-		int i, n;
-		while ((n = file_read(fd, buf, BLOCK_SIZE)) > 0) {
-			buf[n] = 0;
-			for (i = 0; i < n; i++) {
-				if (buf[i] == '\n') {
-					printf("\r\n");
-				} else {
-					putchar(buf[i]);
-				}
-			}
-		}
+		shell_cat(myargs[1]);
 	}
-
-	if (fd >= 0)
-		file_close(fd);
 }
 
 static void my_cp()
@@ -351,10 +314,8 @@ static void my_switch()
 		printf("switch: missing operand\n");
 	} else if (sscanf(myargs[1], "%u", &uid) < 1) {
 		printf("switch: invalid input\n");
-	} else if (uid >= NPROC) {
-		printf("switch: failed: invalid uid\n");
 	} else {
-		running = &proc[uid];
+		pswitch(uid);
 	}
 }
 

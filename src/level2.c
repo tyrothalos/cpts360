@@ -71,7 +71,9 @@ int file_open(char *file, int mode)
 	int dev, ino, i;
 	MINODE *mip = NULL;
 
-	if ((ino = getino(&dev, file)) == 0) {
+	if (mode < 0 || mode > 3) {
+		printf("open: failed: invalid mode input\n");
+	} else if ((ino = getino(&dev, file)) == 0) {
 		printf("open: failed: path does not exist\n");
 	} else if (mip = iget(dev, ino), mip == NULL) {
 		printf("open: error: inode not found\n");
@@ -173,9 +175,6 @@ int file_close(int fd)
 	return 1;
 }
 
-/*
- *
- */
 int file_lseek(int fd, int pos)
 {
 	OFT *op = NULL;
@@ -193,9 +192,22 @@ int file_lseek(int fd, int pos)
 	return -1;
 }
 
-/*
- *
- */
+void shell_pfd()
+{
+	printf("fd  mode    offset  ref_count  INODE\n");
+	printf("--  ----  --------  ---------  -----\n");
+
+	int i;
+	for (i = 0; i < NFD; i++) {
+		if (running->fd[i]) {
+			OFT *op = running->fd[i];
+			printf("%2d  %4d  %8d   %8d  [%d, %d]\n",
+					i, op->mode, op->offset, op->ref_count,
+					op->inodeptr->dev, op->inodeptr->ino);
+		}
+	}
+}
+
 int file_read(int fd, char buf[], int n)
 {
 	OFT *op = NULL;
@@ -258,9 +270,6 @@ int file_read(int fd, char buf[], int n)
 	}
 	return -1;
 }
-
-
-/* WRITE COMMAND */
 
 int file_write(int fd, char buf[], int n)
 {
@@ -327,7 +336,31 @@ int file_write(int fd, char buf[], int n)
 	return -1;
 }
 
-/* CP COMMAND */
+void shell_cat(char *path)
+{
+	int fd;
+	if ((fd = file_open(path, 0)) < 0) {
+		printf("cat: failed: could not open file\n");
+	} else {
+		char buf[BLOCK_SIZE+1];
+		buf[BLOCK_SIZE] = 0;
+
+		int n;
+		while ((n = file_read(fd, buf, BLOCK_SIZE)) > 0) {
+			buf[n] = 0;
+			for (int i = 0; i < n; i++) {
+				if (buf[i] == '\n') {
+					printf("\r\n");
+				} else {
+					putchar(buf[i]);
+				}
+			}
+		}
+	}
+
+	if (fd >= 0)
+		file_close(fd);
+}
 
 int file_cp(char *src, char *dst)
 {
@@ -361,8 +394,6 @@ int file_cp(char *src, char *dst)
 
 	return r;
 }
-
-/* MV COMMAND */
 
 int file_mv(char *src, char *dst)
 {

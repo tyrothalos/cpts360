@@ -122,7 +122,7 @@ void mount(char *filesys, char *path)
 void umount(char *filesys)
 {
 	int tab;
-	if ((tab = get_mounted(myargs[1])) < 0) {
+	if ((tab = get_mounted(filesys)) < 0) {
 		printf("umount: failed: '%s' is not mounted\n", filesys);
 	} else if (is_mount_busy(mounttab[tab].dev)) {
 		printf("umount: failed: mount is busy\n");
@@ -143,6 +143,21 @@ void umount(char *filesys)
 		m->bmap = 0;
 		m->imap = 0;
 		m->iblk = 0;
+	}
+}
+
+/*
+ * pswitch:
+ * @uid: The UID of the process to switch to.
+ *
+ * Switches the running process to the given one.
+ */
+void pswitch(int uid)
+{
+	if (uid >= NPROC) {
+		printf("switch: failed: invalid uid\n");
+	} else {
+		running = &proc[uid];
 	}
 }
 
