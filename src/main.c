@@ -84,7 +84,7 @@ int main(int argc, char *argv[], char *env[])
 {
 	int r = 0;
 	if (argc < 2) {
-		printf("usage: myfs <device>");
+		printf("usage: simulator <device>\n");
 	} else if (init(), mount_root(argv[1]) < 0) {
 		r = -1;
 	} else {

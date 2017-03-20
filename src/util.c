@@ -158,60 +158,48 @@ int has_perm(MINODE *mip, unsigned int perm)
 	}
 }
 
+static void clear_direct(int dev, unsigned int *blocks, int n)
+{
+	for (int i = 0; i < n; i++) {
+		if (!blocks[i]) {
+			break;
+		}
+		bdealloc(dev, blocks[i]);
+		blocks[i] = 0;
+	}
+}
+
+static void clear_indirect(int dev, unsigned int *addr, int n, int depth)
+{
+	if (*addr != 0) {
+		unsigned int blocks[256];
+		get_block(dev, *addr, (char *)blocks);
+		if (depth > 0) {
+			for (int i = 0; i < n; i++) {
+				clear_indirect(dev, &blocks[i], 256, depth-1);
+			}
+		} else {
+			clear_direct(dev, blocks, n);
+		}
+		put_block(dev, *addr, (char *)blocks);
+		bdealloc(dev, *addr);
+		*addr = 0;
+	}
+}
+
 void clear_blocks(MINODE *mip)
 {
-	int i, j;
-	unsigned int buf[256], tmp[256];
-	INODE *ip = &(mip->inode);
+	INODE *ip = &mip->inode;
 
 	// handle direct blocks
-	for (i = 0; i < 12; i++) {
-		if (!ip->i_block[i]) {
-			goto finished;
-		}
-		bdealloc(mip->dev, ip->i_block[i]);
-		ip->i_block[i] = 0;
-	}
+	clear_direct(mip->dev, ip->i_block, 12);
 
 	// handle indirect blocks
-	if (ip->i_block[12]) {
-		get_block(mip->dev, ip->i_block[12], (char *)buf);
-		for (i = 0; i < 256; i++) {
-			if (!buf[i]) {
-				goto finished;
-			}
-			bdealloc(mip->dev, buf[i]);
-			buf[i] = 0;
-		}
-		put_block(mip->dev, ip->i_block[12], (char *)buf);
-		bdealloc(mip->dev, ip->i_block[12]);
-		ip->i_block[12] = 0;
-	}
+	clear_indirect(mip->dev, &ip->i_block[12], 256, 0);
 
 	// handle double indirect blocks
-	if (ip->i_block[13]) {
-		get_block(mip->dev, ip->i_block[13], (char *)buf);
-		for (i = 0; i < 256; i++) {
-			if (buf[i]) {
-				get_block(mip->dev, buf[i], (char *)tmp);
-				for (j = 0; j < 256; j++) {
-					if (!tmp[i]) {
-						goto finished;
-					}
-					bdealloc(mip->dev, tmp[2]);
-					tmp[i] = 0;
-				}
-				put_block(mip->dev, buf[i], (char *)tmp);
-				bdealloc(mip->dev, buf[i]);
-				buf[i] = 0;
-			}
-		}
-		put_block(mip->dev, ip->i_block[13], (char *)buf);
-		bdealloc(mip->dev, ip->i_block[13]);
-		ip->i_block[13] = 0;
-	}
+	clear_indirect(mip->dev, &ip->i_block[13], 256, 1);
 
-finished:
 	// finally reset size
 	ip->i_size = 0;
 	mip->dirty = 1;
