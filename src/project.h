@@ -5,7 +5,6 @@
 #include "util.h"
 
 /* GLOBAL VARIABLES */
-extern OFT    oft[NOFT];          // opened file instance
 extern PROC   proc[NPROC];        // processes
 extern MOUNT  mounttab[NMOUNT];   // mount table
 extern MINODE m_inodes[NMINODES]; // in memory inodes

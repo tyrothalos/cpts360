@@ -1,7 +1,6 @@
 #include "project.h"
 
 /* GLOBAL VARIABLE DECLARATIONS */
-OFT    oft[NOFT];
 PROC   proc[NPROC];
 MOUNT  mounttab[NMOUNT];
 MINODE m_inodes[NMINODES];

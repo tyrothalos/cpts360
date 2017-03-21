@@ -33,7 +33,6 @@ typedef struct ext2_dir_entry_2 DIR;    // need this for new version of e2fs
 #define NMOUNT    10
 #define NPROC      2
 #define NFD       10
-#define NOFT     100
 
 // Open File Table
 typedef struct oft {

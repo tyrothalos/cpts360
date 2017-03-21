@@ -5,6 +5,12 @@
 
 #include "project.h"
 
+/* UNEXPORTED VARIABLES */
+
+#define NOFT 100
+
+static OFT oft[NOFT];
+
 /* UNEXPORTED FUNCTIONS */
 
 static int min(int a, int b)
