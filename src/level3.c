@@ -98,8 +98,8 @@ void mount(char *filesys, char *path)
 		m->bmap = gd->bg_block_bitmap;
 		m->imap = gd->bg_inode_bitmap;
 		m->iblk = gd->bg_inode_table;
-		strcpy(m->name, myargs[1]);
-		strcpy(m->mount_name, myargs[2]);
+		strcpy(m->name, filesys);
+		strcpy(m->mount_name, path);
 
 		mip->mounted = 1;
 		mip->mountptr = m;

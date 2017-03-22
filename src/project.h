@@ -12,10 +12,6 @@ extern MINODE m_inodes[NMINODES]; // in memory inodes
 extern MINODE *root;
 extern PROC   *running;
 
-// global access to command arguments
-extern int  myargc;
-extern char *myargs[256];
-
 /* BASIC FUNCTIONS */
 
 int ialloc(int dev);

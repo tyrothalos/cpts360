@@ -6,7 +6,7 @@
 
 #include "project.h"
 
-static void my_quit()
+static void my_quit(int argc, char *argv[])
 {
 	printf("Cleaning up before closing filesystem... ");
 	for (int i = 0; i < NMINODES; i++) {
@@ -21,178 +21,178 @@ static void my_quit()
 
 /* LEVEL 1 COMMANDS */
 
-static void my_ls()
+static void my_ls(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		shell_ls(".");
 	} else {
-		shell_ls(myargs[1]);
+		shell_ls(argv[1]);
 	}
 }
 
-static void my_cd()
+static void my_cd(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		shell_cd(NULL);
 	} else {
-		shell_cd(myargs[1]);
+		shell_cd(argv[1]);
 	}
 }
 
-static void my_pwd()
+static void my_pwd(int argc, char *argv[])
 {
 	shell_pwd();
 }
 
-static void my_mkdir()
+static void my_mkdir(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		printf("mkdir: missing operand\n");
 	} else {
-		file_mkdir(myargs[1]);
+		file_mkdir(argv[1]);
 	}
 }
 
-static void my_creat()
+static void my_creat(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		printf("creat: missing operand\n");
 	} else {
-		file_creat(myargs[1]);
+		file_creat(argv[1]);
 	}
 }
 
-static void my_rmdir()
+static void my_rmdir(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		printf("rmdir: missing operand\n");
 	} else {
-		file_rmdir(myargs[1]);
+		file_rmdir(argv[1]);
 	}
 }
 
-static void my_rm()
+static void my_rm(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		printf("rm: missing operand\n");
 	} else {
-		file_unlink(myargs[1]);
+		file_unlink(argv[1]);
 	}
 }
 
-static void my_link()
+static void my_link(int argc, char *argv[])
 {
-	if (myargc < 3) {
+	if (argc < 3) {
 		printf("link: missing operand\n");
 	} else {
-		file_link(myargs[1], myargs[2]);
+		file_link(argv[1], argv[2]);
 	}
 }
 
-static void my_symlink()
+static void my_symlink(int argc, char *argv[])
 {
-	if (myargc < 3) {
+	if (argc < 3) {
 		printf("symlink: missing operand\n");
 	} else {
-		file_symlink(myargs[1], myargs[2]);
+		file_symlink(argv[1], argv[2]);
 	}
 }
 
-static void my_unlink()
+static void my_unlink(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		printf("unlink: missing operand\n");
 	} else {
-		file_unlink(myargs[1]);
+		file_unlink(argv[1]);
 	}
 }
 
-static void my_readlink()
+static void my_readlink(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		printf("readlink: missing operand\n");
 	} else {
-		shell_readlink(myargs[1]);
+		shell_readlink(argv[1]);
 	}
 }
 
-static void my_stat()
+static void my_stat(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		printf("stat: missing operand\n");
 	} else {
-		shell_stat(myargs[1]);
+		shell_stat(argv[1]);
 	}
 }
 
-static void my_touch()
+static void my_touch(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		printf("touch: missing operand\n");
 	} else {
-		file_touch(myargs[1]);
+		file_touch(argv[1]);
 	}
 }
 
-static void my_chmod()
+static void my_chmod(int argc, char *argv[])
 {
 	int mode;
-	if (myargc < 3) {
+	if (argc < 3) {
 		printf("chmod: missing operand");
-	} else if (sscanf(myargs[1], "%o", &mode) < 1) {
+	} else if (sscanf(argv[1], "%o", &mode) < 1) {
 		printf("chmod: failed: invalid input\n");
 	} else {
-		file_chmod(mode, myargs[2]);
+		file_chmod(mode, argv[2]);
 	}
 }
 
 
-static void my_chown()
+static void my_chown(int argc, char *argv[])
 {
 	int own;
-	if (myargc < 3) {
+	if (argc < 3) {
 		printf("chown: missing operand");
-	} else if (sscanf(myargs[1], "%d", &own) < 1) {
+	} else if (sscanf(argv[1], "%d", &own) < 1) {
 		printf("chown: failed: invalid input\n");
 	} else {
-		file_chown(own, myargs[2]);
+		file_chown(own, argv[2]);
 	}
 }
 
-static void my_chgrp()
+static void my_chgrp(int argc, char *argv[])
 {
 	int grp;
-	if (myargc < 3) {
+	if (argc < 3) {
 		printf("chgrp: missing operand");
-	} else if (sscanf(myargs[1], "%d", &grp) < 1) {
+	} else if (sscanf(argv[1], "%d", &grp) < 1) {
 		printf("chgrp: failed: invalid input\n");
 	} else {
-		file_chgrp(grp, myargs[2]);
+		file_chgrp(grp, argv[2]);
 	}
 }
 
 /* LEVEL 2 COMMANDS */
 
-static void my_open()
+static void my_open(int argc, char *argv[])
 {
 	int mode;
-	if (myargc < 3) {
+	if (argc < 3) {
 		printf("open: missing operand\n");
-	} else if (sscanf(myargs[2], "%u", &mode) < 1) {
+	} else if (sscanf(argv[2], "%u", &mode) < 1) {
 		printf("open: failed: invalid input\n");
 	} else {
-		int fd = file_open(myargs[1], mode);
+		int fd = file_open(argv[1], mode);
 		if (fd >= 0)
 			printf("file descriptor: %d\n", fd);
 	}
 }
 
-static void my_close()
+static void my_close(int argc, char *argv[])
 {
 	int fd;
-	if (myargc < 2) {
+	if (argc < 2) {
 		printf("close: missing operand\n");
-	} else if (sscanf(myargs[1], "%u", &fd) < 1) {
+	} else if (sscanf(argv[1], "%u", &fd) < 1) {
 		printf("close: failed: invalid input\n");
 	} else {
 		int r = file_close(fd);
@@ -201,14 +201,14 @@ static void my_close()
 	}
 }
 
-static void my_lseek()
+static void my_lseek(int argc, char *argv[])
 {
 	int fd, pos;
-	if (myargc < 3) {
+	if (argc < 3) {
 		printf("lseek: missing operand\n");
-	} else if (sscanf(myargs[1], "%u", &fd) < 1) {
+	} else if (sscanf(argv[1], "%u", &fd) < 1) {
 		printf("lseek: failed: invalid fd\n");
-	} else if (sscanf(myargs[2], "%u", &pos) < 1) {
+	} else if (sscanf(argv[2], "%u", &pos) < 1) {
 		printf("lseek: failed: invalid offset\n");
 	} else {
 		int off = file_lseek(fd, pos);
@@ -217,19 +217,19 @@ static void my_lseek()
 	}
 }
 
-static void my_pfd()
+static void my_pfd(int argc, char *argv[])
 {
 	shell_pfd();
 }
 
-static void my_read()
+static void my_read(int argc, char *argv[])
 {
 	int fd, bytes;
-	if (myargc < 3) {
+	if (argc < 3) {
 		printf("read: missing operand\n");
-	} else if (sscanf(myargs[1], "%u", &fd) < 1) {
+	} else if (sscanf(argv[1], "%u", &fd) < 1) {
 		printf("read: failed: invalid fd\n");
-	} else if (sscanf(myargs[2], "%u", &bytes) < 1) {
+	} else if (sscanf(argv[2], "%u", &bytes) < 1) {
 		printf("read: failed: invalid bytes\n");
 	} else {
 		char buf[bytes];
@@ -239,18 +239,18 @@ static void my_read()
 	}
 }
 
-static void my_write()
+static void my_write(int argc, char *argv[])
 {
 	int fd;
-	if (myargc < 3) {
+	if (argc < 3) {
 		printf("write: missing operand\n");
-	} else if (sscanf(myargs[1], "%u", &fd) < 1) {
+	} else if (sscanf(argv[1], "%u", &fd) < 1) {
 		printf("write: failed: invalid fd\n");
 	} else {
-		int len = strlen(myargs[2]);
+		int len = strlen(argv[2]);
 
 		char buf[len+1];
-		strncpy(buf, myargs[2], len);
+		strncpy(buf, argv[2], len);
 		buf[len] = 0;
 
 		int n = file_write(fd, buf, len);
@@ -258,61 +258,61 @@ static void my_write()
 	}
 }
 
-static void my_cat()
+static void my_cat(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		printf("cat: missing operand\n");
 	} else {
-		shell_cat(myargs[1]);
+		shell_cat(argv[1]);
 	}
 }
 
-static void my_cp()
+static void my_cp(int argc, char *argv[])
 {
-	if (myargc < 3) {
+	if (argc < 3) {
 		printf("cp: missing operand\n");
 	} else {
-		file_cp(myargs[1], myargs[2]);
+		file_cp(argv[1], argv[2]);
 	}
 }
 
-static void my_mv()
+static void my_mv(int argc, char *argv[])
 {
-	if (myargc < 3) {
+	if (argc < 3) {
 		printf("mv: missing operand\n");
 	} else {
-		file_mv(myargs[1], myargs[2]);
+		file_mv(argv[1], argv[2]);
 	}
 }
 
 /* LEVEL 3 COMMANDS */
 
-static void my_mount()
+static void my_mount(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		print_mounttab();
-	} else if (myargc < 3) {
+	} else if (argc < 3) {
 		printf("mount: missing operand\n");
 	} else {
-		mount(myargs[1], myargs[2]);
+		mount(argv[1], argv[2]);
 	}
 }
 
-static void my_umount()
+static void my_umount(int argc, char *argv[])
 {
-	if (myargc < 2) {
+	if (argc < 2) {
 		printf("umount: missing operand\n");
 	} else {
-		umount(myargs[1]);
+		umount(argv[1]);
 	}
 }
 
-static void my_switch()
+static void my_switch(int argc, char *argv[])
 {
 	int uid;
-	if (myargc < 2) {
+	if (argc < 2) {
 		printf("switch: missing operand\n");
-	} else if (sscanf(myargs[1], "%u", &uid) < 1) {
+	} else if (sscanf(argv[1], "%u", &uid) < 1) {
 		printf("switch: invalid input\n");
 	} else {
 		pswitch(uid);
@@ -323,7 +323,7 @@ static void my_switch()
 
 static struct {
 	char *name;
-	void (*func)();
+	void (*func)(int, char *[]);
 } commands[] = {
 	{ "quit"    , my_quit     },
 	{ "ls"      , my_ls       },
@@ -369,16 +369,17 @@ int execute(char *input)
 	if (!*input)
 		return 1;
 
-	myargc = tokenize(input, " ", myargs);
+	char *argv[64];
+	int argc = tokenize(input, " ", argv);
 
 	int len = sizeof(commands) / sizeof(commands[0]);
 	for (int i = 0; i < len; i++) {
-		if (strcmp(myargs[0], commands[i].name) == 0) {
-			commands[i].func();
+		if (strcmp(argv[0], commands[i].name) == 0) {
+			commands[i].func(argc, argv);
 			return (i != 0);
 		}
 	}
-	printf("%s: command not found\n", myargs[0]);
+	printf("%s: command not found\n", argv[0]);
 	return 1;
 }
 
