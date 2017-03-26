@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,29 +27,19 @@ static int find_proc_fd()
 	return -1;
 }
 
-static int find_oft_spot()
+static OFT *find_oft(int ino)
 {
-	for (int i = 0; i < NOFT; i++)
-		if (oft[i].ref_count == 0)
-			return i;
-	return -1;
-}
-
-static int is_open_read(int ino, int mode)
-{
-	if (mode != 0)
-		return -1;
-
+	OFT *op = NULL;
 	for (int i = 0; i < NOFT; i++) {
-		if (oft[i].inodeptr
-				&& oft[i].inodeptr->ino == ino
-				&& oft[i].ref_count > 0
-				&& oft[i].mode == 0) {
-			return i;
+		if (oft[i].ref_count > 0) {
+			if (oft[i].inodeptr && oft[i].inodeptr->ino == ino) {
+				return &oft[i];
+			}
+		} else if (op == NULL) {
+			op = &oft[i];
 		}
 	}
-
-	return -1;
+	return op;
 }
 
 unsigned int get_bno(int dev, unsigned int *blk)
@@ -74,7 +65,8 @@ unsigned int get_bno(int dev, unsigned int *blk)
  */
 int file_open(char *file, int mode)
 {
-	int dev, ino, i;
+	int dev, ino, fd;
+	OFT *op = NULL;
 	MINODE *mip = NULL;
 
 	if (mode < 0 || mode > 3) {
@@ -85,48 +77,28 @@ int file_open(char *file, int mode)
 		printf("open: error: inode not found\n");
 	} else if ((mip->inode.i_mode & 0xF000) != 0x8000) {
 		printf("open: error: '%s' is not a regular file\n", file);
-	} else if ((i = is_open_read(ino, mode)) >= 0) {
-		int fd = find_proc_fd();
-		if (fd < 0) {
-			printf("open: failed: process table is full\n");
-			goto failed;
-		}
-		oft[i].ref_count++;
-		running->fd[fd] = &oft[i];
-		return fd;
+	} else if (fd = find_proc_fd(), fd < 0) {
+		printf("open: failed: process table is full\n");
+	} else if (op = find_oft(ino), op == NULL) {
+		printf("open: failed: open file table is full\n");
+	} else if (mode > 0 && op->mode > 0) {
+		printf("open: failed: cannot open more than once for writing\n");
+	} else if (op->ref_count > 0 && mode == 0 && op->mode == 0) {
+		goto success;
 	} else {
-		int i = find_oft_spot();
-		if (i < 0) {
-			printf("open: failed: open file table is full\n");
-			goto failed;
-		}
-
-		int fd = find_proc_fd();
-		if (fd < 0) {
-			printf("open: failed: process table is full\n");
-			goto failed;
-		}
-
 		switch (mode) {
 			case 1:
-				clear_blocks(mip);    // W
+				clear_blocks(mip); // W
 			case 0:
 			case 2:
-				oft[i].offset = 0; // R, W, RW
+				op->offset = 0; // R, W, RW
 				break;
 			case 3:
-				oft[i].offset = mip->inode.i_size; // APPEND
+				op->offset = mip->inode.i_size; // APPEND
 				break;
 			default:
-				printf("open: failed: invalid mode\n");
-				goto failed;
+				assert(0);
 		}
-		oft[i].mode = mode;
-		oft[i].ref_count = 1;
-		oft[i].inodeptr = mip;
-
-		running->fd[fd] = &oft[i];
-
 		time_t timer = time(0);
 		switch (mode) {
 			case 1:
@@ -137,16 +109,20 @@ int file_open(char *file, int mode)
 				mip->inode.i_atime = timer;
 				break;
 			default:
-				break;
+				assert(0);
 		}
 		mip->dirty = 1;
-
+		op->mode = mode;
+		op->inodeptr = mip;
+success:
+		op->ref_count++;
+		running->fd[fd] = op;
 		return fd;
 	}
 
-failed:
 	if (mip)
 		iput(mip);
+
 	return -1;
 }
 
