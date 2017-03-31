@@ -5,21 +5,7 @@
 
 #include "project.h"
 
-/* GENERIC BLOCK GETTER */
-
-void get_block(int dev, int blk, char buf[])
-{
-	lseek(dev, (long)blk*BLOCK_SIZE, SEEK_SET);
-	read(dev, buf, BLOCK_SIZE);
-}
-
-void put_block(int dev, int blk, char buf[])
-{
-	lseek(dev, (long)blk*BLOCK_SIZE, SEEK_SET);
-	write(dev, buf, BLOCK_SIZE);
-}
-
-/* INODE UTILITY */
+/* UNEXPORTED FUNCTIONS */
 
 static void inode_get_block(MINODE *mip)
 {
@@ -69,6 +55,67 @@ static void inode_put_block(MINODE *mip)
 	put_block(mip->dev, blk, buf);
 }
 
+static void clear_direct(int dev, unsigned int *blocks, int n)
+{
+	for (int i = 0; i < n; i++) {
+		if (!blocks[i]) {
+			break;
+		}
+		bdealloc(dev, blocks[i]);
+		blocks[i] = 0;
+	}
+}
+
+static void clear_indirect(int dev, unsigned int *addr, int n, int depth)
+{
+	if (*addr != 0) {
+		unsigned int blocks[256];
+		get_block(dev, *addr, (char *)blocks);
+		if (depth > 0) {
+			for (int i = 0; i < n; i++) {
+				clear_indirect(dev, &blocks[i], 256, depth-1);
+			}
+		} else {
+			clear_direct(dev, blocks, n);
+		}
+		put_block(dev, *addr, (char *)blocks);
+		bdealloc(dev, *addr);
+		*addr = 0;
+	}
+}
+
+/* EXPORTED FUNCTIONS */
+
+void get_block(int dev, int blk, char buf[])
+{
+	lseek(dev, (long)blk*BLOCK_SIZE, SEEK_SET);
+	read(dev, buf, BLOCK_SIZE);
+}
+
+void put_block(int dev, int blk, char buf[])
+{
+	lseek(dev, (long)blk*BLOCK_SIZE, SEEK_SET);
+	write(dev, buf, BLOCK_SIZE);
+}
+
+void clear_blocks(MINODE *mip)
+{
+	INODE *ip = &mip->inode;
+
+	// handle direct blocks
+	clear_direct(mip->dev, ip->i_block, 12);
+
+	// handle indirect blocks
+	clear_indirect(mip->dev, &ip->i_block[12], 256, 0);
+
+	// handle double indirect blocks
+	clear_indirect(mip->dev, &ip->i_block[13], 256, 1);
+
+	// finally reset size
+	ip->i_size = 0;
+	mip->dirty = 1;
+}
+
 int tokenize(char *path, char *delim, char *buf[])
 {
 	int i = 0;
@@ -104,6 +151,35 @@ int parseargs(char *path, int *dev, char **parent, char **child)
 }
 
 /*
+ * has_perm:
+ * @mip: The inode to check the permissions of.
+ * @perm: The permission to check for.
+ *
+ * Checks if the given inode has the given permission.
+ *
+ * Returns: 0 if the inode does not have the permission, otherwise nonzero.
+ */
+int has_perm(MINODE *mip, unsigned int perm)
+{
+	if (running->uid == 0)
+		return 1;
+
+	INODE *ip = &mip->inode;
+	unsigned int mode = ip->i_mode;
+
+	if (ip->i_uid == running->uid) {
+		mode &= 00700;
+		return (((mode >> 6) & perm) == perm);
+	} else if (ip->i_gid == running->gid) {
+		mode &= 00070;
+		return (((mode >> 3) & perm) == perm);
+	} else {
+		mode &= 00007;
+		return ((mode & perm) == perm);
+	}
+}
+
+/*
  * search:
  * @parent: The parent inode to search.
  * @name: The name of the inode to search for.
@@ -131,73 +207,6 @@ int search(MINODE *parent, char *name)
 		}
 	}
 	return 0;
-}
-
-int has_perm(MINODE *mip, unsigned int perm)
-{
-	if (running->uid == 0)
-		return 1;
-
-	INODE *ip = &mip->inode;
-	unsigned int mode = ip->i_mode;
-
-	if (ip->i_uid == running->uid) {
-		mode &= 00700;
-		return (((mode >> 6) & perm) == perm);
-	} else if (ip->i_gid == running->gid) {
-		mode &= 00070;
-		return (((mode >> 3) & perm) == perm);
-	} else {
-		mode &= 00007;
-		return ((mode & perm) == perm);
-	}
-}
-
-static void clear_direct(int dev, unsigned int *blocks, int n)
-{
-	for (int i = 0; i < n; i++) {
-		if (!blocks[i]) {
-			break;
-		}
-		bdealloc(dev, blocks[i]);
-		blocks[i] = 0;
-	}
-}
-
-static void clear_indirect(int dev, unsigned int *addr, int n, int depth)
-{
-	if (*addr != 0) {
-		unsigned int blocks[256];
-		get_block(dev, *addr, (char *)blocks);
-		if (depth > 0) {
-			for (int i = 0; i < n; i++) {
-				clear_indirect(dev, &blocks[i], 256, depth-1);
-			}
-		} else {
-			clear_direct(dev, blocks, n);
-		}
-		put_block(dev, *addr, (char *)blocks);
-		bdealloc(dev, *addr);
-		*addr = 0;
-	}
-}
-
-void clear_blocks(MINODE *mip)
-{
-	INODE *ip = &mip->inode;
-
-	// handle direct blocks
-	clear_direct(mip->dev, ip->i_block, 12);
-
-	// handle indirect blocks
-	clear_indirect(mip->dev, &ip->i_block[12], 256, 0);
-
-	// handle double indirect blocks
-	clear_indirect(mip->dev, &ip->i_block[13], 256, 1);
-
-	// finally reset size
-	ip->i_size = 0;
-	mip->dirty = 1;
 }
 
 /*
