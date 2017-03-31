@@ -104,35 +104,30 @@ int parseargs(char *path, int *dev, char **parent, char **child)
 }
 
 /*
- * Searches for an inode with the given name inside of
- * the given mip. If it is found, then the inode number
- * of the found node is return. If not found, then 0 is
- * returned.
+ * search:
+ * @parent: The parent inode to search.
+ * @name: The name of the inode to search for.
+ *
+ * Searches for an inode with the given name inside of the given parent inode.
+ * If it is found, then the inode number of the found node is returned. 
+ * 
+ * Returns: The inode number if found, otherwise 0.
  */
-int search(MINODE *mip, char *name)
+int search(MINODE *parent, char *name)
 {
-	char buf[BLOCK_SIZE], tmp[256];
+	int len = strlen(name);
+	for (int i = 0; i < 12; i++) {
+		char buf[BLOCK_SIZE];
+		DIR *dp = (DIR *)buf;
 
-	int i;
-	for (i = 0; i < 12; i++) {
-		get_block(mip->dev, mip->inode.i_block[i], buf);
+		get_block(parent->dev, parent->inode.i_block[i], buf);
 
-		int  len = 0;
-		char *cp = buf;
-		DIR  *dp = (DIR *)buf;
-		while (len < BLOCK_SIZE) {
-			if (dp->rec_len < 1)
+		for (int j = 0; j < BLOCK_SIZE; j += dp->rec_len) {
+			dp = (DIR *)(buf + j);
+			if (dp->rec_len <= 0)
 				return 0;
-
-			strncpy(tmp, dp->name, dp->name_len);
-			tmp[dp->name_len] = 0;
-
-			if (strcmp(tmp, name) == 0)
+			if (len == dp->name_len && strncmp(name, dp->name, len) == 0)
 				return dp->inode;
-
-			len += dp->rec_len;
-			cp  += dp->rec_len;
-			dp   = (DIR *)cp;
 		}
 	}
 	return 0;
