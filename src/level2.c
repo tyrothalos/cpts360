@@ -60,8 +60,7 @@ unsigned int get_bno(int dev, unsigned int *blk)
  * @file: The path of the file to open.
  * @mode: The mode to open the file with.
  *
- * Returns: -1 if the operation fails, otherwise the
- *          file descriptor of the opened file.
+ * Returns: The file descriptor of the opened file if successful, otherwise -1.
  */
 int file_open(char *file, int mode)
 {
@@ -258,7 +257,7 @@ int file_write(int fd, char buf[], int n)
 	OFT *op = NULL;
 	if (fd < 0 || fd >= NFD) {
 		printf("write: fd is out of range\n");
-	} else if (!(op = running->fd[fd])) {
+	} else if (op = running->fd[fd], op == NULL) {
 		printf("write: failed: '%d' is not open\n", fd);
 	} else if (op->mode == 0) {
 		printf("write: failed: '%d' not open for writing\n", fd);
@@ -350,11 +349,11 @@ int file_cp(char *src, char *dst)
 	int fd = -1, gd = -1;
 	int dev, ino;
 
-	if ((fd = file_open(src, 0)) < 0) {
+	if (fd = file_open(src, 0), fd < 0) {
 		printf("cp: failed: cannot open '%s'\n", src);
-	} else if ((ino = getino(&dev, dst)) == 0 && (file_creat(dst) < 0)) {
+	} else if (ino = getino(&dev, dst), ino == 0 && file_creat(dst) < 0) {
 		printf("cp: failed: could not access '%s'\n", dst);
-	} else if ((gd = file_open(dst, 1)) < 0) {
+	} else if (gd = file_open(dst, 1), gd < 0) {
 		printf("cp: failed: cannot open '%s'\n", dst);
 	} else {
 		char buf[BLOCK_SIZE+1];
@@ -382,32 +381,19 @@ int file_mv(char *src, char *dst)
 	int r = -1;
 	int sdev, sino;
 	int ddev, dino;
-	int odev, oino;
-	char *parent = NULL, *child = NULL;
-	MINODE *mip = NULL;
 
-	if ((sino = getino(&sdev, src)) == 0) {
+	if (sino = getino(&sdev, src), sino == 0) {
 		printf("mv: failed: source does not exist\n");
-	} else if ((oino = parseargs(dst, &odev, &parent, &child)) == 0) {
-		printf("mv: failed: destination does not exist\n");
-	} else if ((dino = getino(&ddev, dst)) != 0 && file_unlink(dst) < 0) {
+	} else if (dino = getino(&ddev, dst), dino != 0 && file_unlink(dst) < 0) {
 		printf("mv: failed: existing file at destination cannot be removed\n");
-	} else if (sdev == ddev) {
-		if (file_link(src, dst) >= 0 && file_unlink(src) >= 0) {
-			r = 0;
-		}
+	} else if ((sdev == ddev ? file_link(src, dst) : file_cp(src, dst)) < 0) {
+		printf("mv: failed: cannot create file at destination\n");
+	} else if (file_unlink(src) < 0) {
+		printf("mv: failed: cannot remove file at source\n");
+		file_unlink(dst);
 	} else {
-		if (file_cp(src, dst) >= 0 && file_unlink(src) >= 0) {
-			r = 0;
-		}
+		r = 0;
 	}
-
-	if (mip)
-		iput(mip);
-	if (parent)
-		free(parent);
-	if (child)
-		free(child);
 
 	return r;
 }
