@@ -6,6 +6,29 @@
 
 #include "project.h"
 
+/*
+ * Handles the parsing of a path into dirname and basename as well
+ * as finding the inode of the parent, if it exists.
+ */
+static int parseargs(char *path, int *dev, char **parent, char **child)
+{
+	char tmp1[256], tmp2[256];
+	strcpy(tmp1, path);
+	strcpy(tmp2, path);
+
+	*parent = strdup(dirname(tmp1));
+	*child = strdup(basename(tmp2));
+
+	int ino;
+	if (strcmp(*parent, ".") == 0) {
+		*dev = running->cwd->dev;
+		ino = running->cwd->ino;
+	} else {
+		ino = getino(dev, *parent);
+	}
+	return ino;
+}
+
 static void insert_entry(MINODE *mip, int ino, char *name)
 {
 	int i;

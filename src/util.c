@@ -128,29 +128,6 @@ int tokenize(char *path, char *delim, char *buf[])
 }
 
 /*
- * Handles the parsing of a path into dirname and basename as well
- * as finding the inode of the parent, if it exists.
- */
-int parseargs(char *path, int *dev, char **parent, char **child)
-{
-	char tmp1[256], tmp2[256];
-	strcpy(tmp1, path);
-	strcpy(tmp2, path);
-
-	*parent = strdup(dirname(tmp1));
-	*child = strdup(basename(tmp2));
-
-	int ino;
-	if (strcmp(*parent, ".") == 0) {
-		*dev = running->cwd->dev;
-		ino = running->cwd->ino;
-	} else {
-		ino = getino(dev, *parent);
-	}
-	return ino;
-}
-
-/*
  * has_perm:
  * @mip: The inode to check the permissions of.
  * @perm: The permission to check for.
@@ -210,75 +187,85 @@ int search(MINODE *parent, char *name)
 }
 
 /*
- * Given a filepath, this function will traverse the
- * filesystem to find the file and return its inode.
- * If the file cannot be found, then 0 is returned.
+ * getino:
+ * @dev: The device the inode is on.
+ * @name: The name of the inode to find.
  *
- * Returns inode number of pathname. If the device
- * number changes while traversing the filesystem
- * then dev is set to the new device number.
+ * Given a filepath, this function will traverse the filesystem to find the
+ * file and return its inode. If the device number changes while traversing the
+ * filesystem then dev is set to the new device number.
+ *
+ * Returns: The inode number if found, otherwise 0.
  */
 int getino(int *dev, char *name)
 {
-	MINODE *mip = NULL;
-	char *str, buffer[256];
-	strncpy(buffer, name, 256);
-	str = buffer;
+	int ino;
+	char buf[256];
+	char *str = buf;
+	strncpy(buf, name, 256);
 
-	int ino = running->cwd->ino;
-	*dev    = running->cwd->dev;
+	*dev = running->cwd->dev;
+	ino = running->cwd->ino;
 	if (*str == '/') {
 		str++;
-		ino  = root->ino;
 		*dev = root->dev;
+		ino = root->ino;
 	}
+
 	char *tok[256];
 	int len = tokenize(str, "/", tok);
+	
+	MINODE *mip = iget(*dev, ino);
+	if (mip == NULL)
+		return 0;
 
-	int i, r = 0;
-	for (i = 0; i < len; i++) {
-		if (mip = iget(*dev, ino), mip == NULL) {
-			r = -1;
-		} else if ((mip->inode.i_mode & 0xF000) != 0x4000) {
-			r = -2;
-		} else if (mip->ino == 2
-				&& mip->dev != root->dev
-				&& strcmp(tok[i], "..") == 0) {
+	for (int i = 0; i < len; i++) {
+		if ((mip->inode.i_mode & 0xF000) != 0x4000) {
+			// check if inode is a directory
+			break;
+		} else if (mip->ino == 2 && strcmp(tok[i], "..") == 0) {
+			// going upstream out of mount point
 			int i;
 			for (i = 0; i < NMOUNT; i++) {
 				if (mounttab[i].dev == mip->dev) {
 					break;
 				}
 			}
-
-			iput(mip);
 			MINODE *m = mounttab[i].mounted_inode;
+
+			// load the mount point
+			iput(mip);
 			mip = iget(m->dev, m->ino);
 
-			ino  = search(mip, "..");
-			*dev = m->dev;
-		} else if ((ino = search(mip, tok[i])) == 0) {
-			r = -3;
+			// select parent of mount point
+			*dev = mip->dev;
+			ino = search(mip, "..");
+
+			// load parent of mount point
+			iput(mip);
+			mip = iget(*dev, ino);
+		} else if (ino = search(mip, tok[i]), ino == 0) {
+			// find next inode number
+			break;
 		} else {
-			// check to see if this ino is mounted
+			// load next memory inode
 			iput(mip);
 			mip = iget(*dev, ino);
 
 			if (mip->mounted) {
-				MOUNT *mount = mip->mountptr;
-				iput(mip);
-				mip = iget(mount->dev, 2);
+				// check if inode is mount point
+				// if it is, then move into it
+				*dev = mip->mountptr->dev;
+				ino = 2;
 
-				ino  = 2;
-				*dev = mount->dev;
+				iput(mip);
+				mip = iget(*dev, ino);
 			}
 		}
-
-		if (mip)
-			iput(mip);
-		if (r < 0)
-			return 0;
 	}
+
+	if (mip)
+		iput(mip);
 
 	return ino;
 }
