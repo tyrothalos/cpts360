@@ -332,5 +332,5 @@ void iput(MINODE *mip)
 	mip->ino = 0;
 	mip->dev = 0;
 	mip->mounted = 0;
+	mip->mountptr = 0;
 }
-

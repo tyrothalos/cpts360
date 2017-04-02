@@ -62,7 +62,7 @@ void print_mounttab()
  */
 void mount(char *filesys, char *path)
 {
-	int fd = -1, tab = -1;
+	int fd, md;
 	int dev, ino;
 	MINODE *mip = NULL;
 
@@ -73,24 +73,24 @@ void mount(char *filesys, char *path)
 		printf("mount: failed: may only mount relative to root\n");
 	} else if (get_mounted(filesys) >= 0) {
 		printf("mount: failed: '%s' is already mounted\n", filesys);
-	} else if ((fd = open(filesys, O_RDWR)) < 0) {
+	} else if (fd = open(filesys, O_RDWR), fd < 0) {
 		printf("mount: failed: could not open '%s'\n", filesys);
 	} else if (get_block(fd, SUPER_BLOCK, buf), s->s_magic != SUPER_MAGIC) {
 		printf("mount: failed: filesystem is not EXT2\n");
 	} else if (file_mkdir(path) < 0) {
 		printf("mount: failed: could not create mount point\n");
-	} else if ((ino = getino(&dev, path)) == 0) {
+	} else if (ino = getino(&dev, path), ino == 0) {
 		printf("mount: failed: mount point does not exist\n");
-	} else if ((mip = iget(dev, ino)) == 0) {
+	} else if (mip = iget(dev, ino), mip == NULL) {
 		printf("mount: error: inode not found\n");
-	} else if ((tab = alloc_mount()) < 0) {
+	} else if (md = alloc_mount(), md < 0) {
 		printf("mount: failed: mount table is full\n");
 	} else {
 		char tmp[BLOCK_SIZE];
 		get_block(fd, GD_BLOCK, tmp);
 		GD *gd = (GD *)tmp;
 
-		MOUNT *m = &mounttab[tab];
+		MOUNT *m = &mounttab[md];
 		m->mounted_inode = mip;
 		m->dev = fd;
 		m->nblocks = s->s_blocks_count;
@@ -98,8 +98,8 @@ void mount(char *filesys, char *path)
 		m->bmap = gd->bg_block_bitmap;
 		m->imap = gd->bg_inode_bitmap;
 		m->iblk = gd->bg_inode_table;
-		strcpy(m->name, filesys);
-		strcpy(m->mount_name, path);
+		strncpy(m->name, filesys, 64);
+		strncpy(m->mount_name, path, 64);
 
 		mip->mounted = 1;
 		mip->mountptr = m;
@@ -121,28 +121,26 @@ void mount(char *filesys, char *path)
  */
 void umount(char *filesys)
 {
-	int tab;
-	if ((tab = get_mounted(filesys)) < 0) {
+	int md;
+	if (md = get_mounted(filesys), md < 0) {
 		printf("umount: failed: '%s' is not mounted\n", filesys);
-	} else if (is_mount_busy(mounttab[tab].dev)) {
+	} else if (is_mount_busy(mounttab[md].dev)) {
 		printf("umount: failed: mount is busy\n");
 	} else {
-		MOUNT *m = &mounttab[tab];
-		m->name[0] = 0;
-		m->mount_name[0] = 0;
-		m->mounted_inode->mounted = 0;
-
-		close(m->dev);
-		m->dev = 0;
+		MOUNT *m = &mounttab[md];
 
 		iput(m->mounted_inode);
-		m->mounted_inode = 0;
+		close(m->dev);
 
+		m->mounted_inode = 0;
+		m->dev = 0;
 		m->nblocks = 0;
 		m->ninodes = 0;
 		m->bmap = 0;
 		m->imap = 0;
 		m->iblk = 0;
+		memset(m->name, 0, 64);
+		memset(m->mount_name, 0, 64);
 	}
 }
 
