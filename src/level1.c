@@ -6,6 +6,8 @@
 
 #include "project.h"
 
+/* UNEXPORTED FUNCTIONS */
+
 /*
  * Handles the parsing of a path into dirname and basename as well
  * as finding the inode of the parent, if it exists.
@@ -27,6 +29,33 @@ static int parseargs(char *path, int *dev, char **parent, char **child)
 		ino = getino(dev, *parent);
 	}
 	return ino;
+}
+
+static void help_mknod(int dev, int ino, int bno, int mode, int size, int links)
+{
+	MINODE *mip = iget(dev, ino);
+	INODE *ip = &mip->inode;
+
+	ip->i_mode = mode;
+	ip->i_size = size;
+	ip->i_links_count = links;
+
+	ip->i_uid = running->uid;
+	ip->i_gid = running->gid;
+
+	time_t timer = time(0);
+	ip->i_ctime = timer;
+	ip->i_atime = timer;
+	ip->i_mtime = timer;
+
+	ip->i_blocks = 2;
+	ip->i_block[0] = bno;
+
+	for (int i = 1; i < 15; i++)
+		ip->i_block[i] = 0;
+
+	mip->dirty = 1;
+	iput(mip);
 }
 
 static void insert_entry(MINODE *mip, int ino, char *name)
@@ -92,36 +121,6 @@ static void insert_entry(MINODE *mip, int ino, char *name)
 		mip->inode.i_size += BLOCK_SIZE;
 		put_block(mip->dev, mip->inode.i_block[i], buf);
 	}
-}
-
-static void help_mknod(int dev, int ino, int bno,
-		int mode, int size, int links)
-{
-	MINODE *mip = iget(dev, ino);
-	INODE  *ip  = &mip->inode;
-
-	ip->i_mode = mode;
-	ip->i_size = size;
-	ip->i_links_count = links;
-
-	ip->i_uid  = running->uid;
-	ip->i_gid  = running->gid;
-
-	time_t timer = time(0);
-	ip->i_ctime = timer;
-	ip->i_atime = timer;
-	ip->i_mtime = timer;
-
-	ip->i_blocks = 2;
-	ip->i_block[0] = bno;
-
-	int i;
-	for (i = 1; i < 15; i++) {
-		ip->i_block[i] = 0;
-	}
-
-	mip->dirty = 1;
-	iput(mip);
 }
 
 static void remove_entry(MINODE *mip, char *name)
@@ -213,6 +212,35 @@ static void remove_entry(MINODE *mip, char *name)
 	}
 }
 
+static void makedir(MINODE *parent, char *child)
+{
+	int ino = ialloc(parent->dev);
+	int bno = balloc(parent->dev);
+
+	help_mknod(parent->dev, ino, bno, 0x41ED, BLOCK_SIZE, 2);
+
+	// ENTERING '.' AND '..' ENTRIES START
+	char buf[BLOCK_SIZE];
+	memset(buf, 0, BLOCK_SIZE);
+
+	DIR *dp = (DIR *)buf;
+	dp->inode    = ino;
+	dp->name_len = 1;
+	dp->rec_len  = 12;
+	strncpy(dp->name, ".", 1);
+
+	dp = (DIR *)(buf + dp->rec_len);
+	dp->inode    = parent->ino;
+	dp->name_len = 2;
+	dp->rec_len  = BLOCK_SIZE - 12;
+	strncpy(dp->name, "..", 2);
+
+	put_block(parent->dev, bno, buf);
+	// ENTERING '.' AND '..' ENTRIES FINISH
+
+	insert_entry(parent, ino, child);
+}
+
 static void print_dir_entry(int dev, int ino, char *name)
 {
 	char *perms = "xwrxwrxwr";
@@ -227,8 +255,7 @@ static void print_dir_entry(int dev, int ino, char *name)
 	if (mode == 0x4000) putchar('d');
 	if (mode == 0xA000) putchar('l');
 
-	int i;
-	for (i = 8; i >= 0; i--) {
+	for (int i = 8; i >= 0; i--) {
 		if (inode->i_mode & (1 << i)) {
 			putchar(perms[i]);
 		} else {
@@ -257,61 +284,150 @@ static void print_dir_entry(int dev, int ino, char *name)
 	iput(mip);
 }
 
-void ls_file(MINODE *mip, char *name)
+/*
+ * print_dir_entries:
+ * @mip: The inode of the directory to print.
+ *
+ * Prints the full listing of all the files contained in the given directory.
+ */
+static void print_dir_entries(MINODE *mip)
 {
 	char buf[BLOCK_SIZE];
+	DIR *dp = (DIR *)buf;
+
 	get_block(mip->dev, mip->inode.i_block[0], buf);
 
-	char *cp = buf;
-	DIR  *dp = (DIR *)buf;
+	for (int i = 0; i < BLOCK_SIZE; i += dp->rec_len) {
+		dp = (DIR *)(buf + i);
 
-	char tmp[256];
-	while (cp < buf + BLOCK_SIZE) {
+		if (dp->rec_len <= 0)
+			break;
+
+		char tmp[256];
+		strncpy(tmp, dp->name, dp->name_len);
+		tmp[dp->name_len] = 0;
+
+		print_dir_entry(mip->dev, dp->inode, tmp);
+	}
+}
+
+/*
+ * print_file_entry:
+ * @mip: The inode of the directory containing the file.
+ * @name: The name of the file to print.
+ *
+ * Prints the full listing of a single file.
+ */
+static void print_file_entry(MINODE *mip, char *name)
+{
+	char buf[BLOCK_SIZE];
+	DIR *dp = (DIR *)buf;
+
+	get_block(mip->dev, mip->inode.i_block[0], buf);
+
+	for (int i = 0; i < BLOCK_SIZE; i += dp->rec_len) {
+		dp = (DIR *)(buf + i);
+
+		if (dp->rec_len <= 0)
+			break;
+
+		char tmp[256];
 		strncpy(tmp, dp->name, dp->name_len);
 		tmp[dp->name_len] = 0;
 
 		if (strcmp(tmp, name) == 0) {
 			print_dir_entry(mip->dev, dp->inode, tmp);
-			return;
+			break;
 		}
-
-		if (!dp->rec_len)
-				break;
-
-		cp += dp->rec_len;
-		dp = (DIR *)cp;
 	}
 }
 
-void ls_dir(MINODE *mip)
+/*
+ * print_entry_name:
+ * @mip: The inode of the directory containing the file.
+ * @ino: The inode number of the file.
+ *
+ * Prints the name of the file with the given inode number.
+ */
+static void print_entry_name(MINODE *mip, int ino)
 {
 	char buf[BLOCK_SIZE];
+	DIR *dp = (DIR *)buf;
+
 	get_block(mip->dev, mip->inode.i_block[0], buf);
 
-	char *cp = buf;
-	DIR  *dp = (DIR *)buf;
+	for (int i = 0; i < BLOCK_SIZE; i += dp->rec_len) {
+		dp = (DIR *)(buf + i);
 
-	char tmp[256];
-	while (cp < buf + BLOCK_SIZE) {
+		if (dp->rec_len <= 0)
+			break;
+
+		char tmp[256];
 		strncpy(tmp, dp->name, dp->name_len);
 		tmp[dp->name_len] = 0;
 
-		print_dir_entry(mip->dev, dp->inode, tmp);
-
-		if (!dp->rec_len)
-				break;
-
-		cp += dp->rec_len;
-		dp = (DIR *)cp;
+		if (dp->inode == ino) {
+			printf("%s", tmp);
+			return;
+		}
 	}
 }
+
+static int dir_is_empty(MINODE *mip)
+{
+	if (mip->inode.i_links_count > 2)
+		return 0;
+
+	// TODO: is this loop supposed to be here?
+	for (int i = 0; i < 12; i++) {
+		if (mip->inode.i_block[i] == 0)
+			continue;
+
+		char buf[BLOCK_SIZE];
+		DIR *dp = (DIR *)buf;
+
+		get_block(mip->dev, mip->inode.i_block[i], buf);
+
+		for (int j = 0; j < BLOCK_SIZE; j += dp->rec_len) {
+			dp = (DIR *)(buf + j);
+			
+			if (dp->rec_len <= 0)
+				break;
+
+			char tmp[256];
+			strncpy(tmp, dp->name, dp->name_len);
+			tmp[dp->name_len] = 0;
+
+			if (strcmp(tmp, ".") != 0 && strcmp(tmp, "..") != 0)
+				return 0;
+		}
+	}
+	return 1;
+}
+
+static void help_pwd(MINODE *mip)
+{
+	if (mip == root)
+		return;
+
+	int dev = mip->dev;
+	int ino = getino(&dev, "..");
+	MINODE *parent = iget(dev, ino);
+
+	help_pwd(parent);
+	printf("/");
+	print_entry_name(parent, mip->ino);
+
+	iput(parent);
+}
+
+/* EXPORTED FUNCTIONS */
 
 void shell_ls(char *path)
 {
 	int dev, pino, cino;
 	char *parent = NULL, *child = NULL;
 	MINODE *pmip = NULL, *cmip = NULL;
-
 
 	if ((pino = parseargs(path, &dev, &parent, &child)) == 0) {
 		printf("ls: failed: path does not exist\n");
@@ -324,9 +440,9 @@ void shell_ls(char *path)
 	} else if (cmip = iget(dev, cino), cmip == NULL) {
 		printf("ls: error: inode '%d' not found\n", cino);
 	} else if ((cmip->inode.i_mode & 0xF000) != 0x4000) {
-		ls_file(pmip, child);
+		print_file_entry(pmip, child);
 	} else {
-		ls_dir(cmip);
+		print_dir_entries(cmip);
 	}
 
 	if (pmip)
@@ -346,7 +462,7 @@ void shell_cd(char *path)
 
 	if (path == NULL) {
 		iput(running->cwd);
-		running->cwd= root;
+		running->cwd = root;
 		root->ref_count++;
 		return;
 	} else if ((ino = getino(&dev, path)) == 0) {
@@ -365,44 +481,6 @@ void shell_cd(char *path)
 		iput(mip);
 }
 
-static int print_entry_name(MINODE *mip, int ino)
-{
-	char buf[BLOCK_SIZE], tmp[256];
-	get_block(mip->dev, mip->inode.i_block[0], buf);
-
-	char *cp = buf;
-	DIR  *dp = (DIR *)buf;
-
-	while ((cp < buf + BLOCK_SIZE) && (dp->rec_len > 0)) {
-		strncpy(tmp, dp->name, dp->name_len);
-		tmp[dp->name_len] = 0;
-
-		if (ino == dp->inode) {
-			printf("%s", tmp);
-			return 1;
-		}
-
-		cp += dp->rec_len;
-		dp = (DIR *)cp;
-	}
-	return 0;
-}
-
-static void help_pwd(MINODE *mip)
-{
-	if (mip == root)
-		return;
-
-	int ino = search(mip, "..");
-	MINODE *parent = iget(mip->dev, ino);
-
-	help_pwd(parent);
-	printf("/");
-	print_entry_name(parent, mip->ino);
-
-	iput(parent);
-}
-
 void shell_pwd()
 {
 	if (running->cwd == root) {
@@ -411,41 +489,6 @@ void shell_pwd()
 		help_pwd(running->cwd);
 		printf("\n");
 	}
-}
-
-static void help_mkdir(MINODE *parent, char *child)
-{
-	int ino = ialloc(parent->dev);
-	int bno = balloc(parent->dev);
-
-	help_mknod(parent->dev, ino, bno, 0x41ED, BLOCK_SIZE, 2);
-
-	// ENTERING '.' AND '..' ENTRIES START
-	char buf[BLOCK_SIZE];
-	memset(buf, 0, BLOCK_SIZE);
-
-	int  len = 0;
-	char *cp = buf;
-	DIR  *dp = (DIR *)cp;
-
-	dp->inode    = ino;
-	dp->name_len = 1;
-	strncpy(dp->name, ".", 1);
-	dp->rec_len  = 12;
-
-	len += dp->rec_len;
-	cp  += dp->rec_len;
-	dp   = (DIR *)cp;
-
-	dp->inode    = parent->ino;
-	dp->name_len = 2;
-	strncpy(dp->name, "..", 2);
-	dp->rec_len  = BLOCK_SIZE - 12;
-
-	put_block(parent->dev, bno, buf);
-	// ENTERING '.' AND '..' ENTRIES FINISH
-
-	insert_entry(parent, ino, child);
 }
 
 int file_mkdir(char *path)
@@ -460,11 +503,11 @@ int file_mkdir(char *path)
 	} else if (mip = iget(dev, ino), mip == NULL) {
 		printf("mkdir: failed: inode not found\n");
 	} else if ((mip->inode.i_mode & 0xF000) != 0x4000) {
-		printf("mkdir: %s: Not a directory\n", path);
+		printf("mkdir: %s: not a directory\n", path);
 	} else if (search(mip, child) != 0) {
-		printf("mkdir: cannot create directory '%s': File exists\n", child);
+		printf("mkdir: cannot create directory '%s': file exists\n", child);
 	} else {
-		help_mkdir(mip, child);
+		makedir(mip, child);
 
 		mip->inode.i_atime = time(0);
 		mip->inode.i_links_count++;
@@ -495,16 +538,18 @@ int file_creat(char *path)
 	} else if (mip = iget(dev, ino), mip == NULL) {
 		printf("creat: failed: inode not found");
 	} else if ((mip->inode.i_mode & 0xF000) != 0x4000) {
-		printf("creat: %s: Not a directory\n", path);
+		printf("creat: %s: not a directory\n", path);
 	} else if (search(mip, child) != 0) {
-		printf("creat: cannot create file '%s': File exists\n", child);
+		printf("creat: cannot create file '%s': file exists\n", child);
 	} else {
 		int inum = ialloc(mip->dev);
 		int bnum = balloc(mip->dev);
 
 		help_mknod(mip->dev, inum, bnum, 0x81A4, 0, 1);
+
 		char buf[BLOCK_SIZE];
 		memset(buf, 0, BLOCK_SIZE);
+
 		put_block(mip->dev, bnum, buf);
 		insert_entry(mip, inum, child);
 
@@ -522,39 +567,6 @@ int file_creat(char *path)
 		free(child);
 
 	return r;
-}
-
-static int dir_is_empty(MINODE *mip)
-{
-	if (mip->inode.i_links_count > 2)
-		return 0;
-
-	char buf[BLOCK_SIZE];
-
-	int i;
-	for (i = 0; i < 12; i++) {
-		if (mip->inode.i_block[i] == 0)
-			continue;
-
-		get_block(mip->dev, mip->inode.i_block[i], buf);
-
-		int  len = 0;
-		char *cp = buf;
-		DIR  *dp = (DIR *)cp;
-
-		while (len < BLOCK_SIZE) {
-			dp->name[dp->name_len] = 0;
-
-			if (!strcmp(dp->name, ".") && !strcmp(dp->name, ".."))
-				return 0;
-
-			len += dp->rec_len;
-			cp  += dp->rec_len;
-			dp   = (DIR *)cp;
-		}
-	}
-
-	return 1;
 }
 
 int file_rmdir(char *path)
@@ -586,8 +598,8 @@ int file_rmdir(char *path)
 		printf("rmdir: failed: '%s' is not empty\n", child);
 	} else {
 		remove_entry(pmip, child);
-		int i;
-		for (i = 0; i < 12; i++) {
+
+		for (int i = 0; i < 12; i++) {
 			if (cmip->inode.i_block[i] != 0) {
 				bdealloc(cmip->dev, cmip->inode.i_block[i]);
 			}
@@ -692,8 +704,10 @@ int file_symlink(char *src, char *dst)
 		int bnum = balloc(tmip->dev);
 
 		help_mknod(tmip->dev, inum, bnum, 0xA1A4, 0, 1);
+
 		char buf[BLOCK_SIZE];
 		memset(buf, 0, BLOCK_SIZE);
+
 		put_block(tmip->dev, bnum, buf);
 		insert_entry(tmip, inum, child);
 
