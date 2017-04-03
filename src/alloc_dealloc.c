@@ -57,26 +57,21 @@ static void clr_bit(char buf[], int bit)
  */
 int ialloc(int dev)
 {
-	char buf1[BLOCK_SIZE];
-	char buf2[BLOCK_SIZE];
 	char bmap[BLOCK_SIZE];
 
-	SUPER *s = (SUPER *)buf1;
-	GD *gd = (GD *)buf2;
+	SUPER s = get_super_block(dev);
+	GD    g = get_group_block(dev);
+	get_block(dev, g.bg_inode_bitmap, bmap);
 
-	get_block(dev, SUPER_BLOCK, buf1);
-	get_block(dev, GD_BLOCK, buf2);
-	get_block(dev, gd->bg_inode_bitmap, bmap);
-
-	for (int i = 0; i < s->s_inodes_count; i++) {
+	for (int i = 0; i < s.s_inodes_count; i++) {
 		if (tst_bit(bmap, i) == 0) {
 			set_bit(bmap, i);
-			s->s_free_inodes_count--;
-			gd->bg_free_inodes_count--;
+			s.s_free_inodes_count--;
+			g.bg_free_inodes_count--;
 
-			put_block(dev, gd->bg_inode_bitmap, bmap);
-			put_block(dev, GD_BLOCK, buf2);
-			put_block(dev, SUPER_BLOCK, buf1);
+			put_block(dev, g.bg_inode_bitmap, bmap);
+			put_group_block(dev, g);
+			put_super_block(dev, s);
 
 			return i + 1;
 		}
@@ -96,26 +91,21 @@ int ialloc(int dev)
  */
 int balloc(int dev)
 {
-	char buf1[BLOCK_SIZE];
-	char buf2[BLOCK_SIZE];
 	char bmap[BLOCK_SIZE];
 
-	SUPER *s = (SUPER *)buf1;
-	GD *gd = (GD *)buf2;
+	SUPER s = get_super_block(dev);
+	GD    g = get_group_block(dev);
+	get_block(dev, g.bg_block_bitmap, bmap);
 
-	get_block(dev, SUPER_BLOCK, buf1);
-	get_block(dev, GD_BLOCK, buf2);
-	get_block(dev, gd->bg_block_bitmap, bmap);
-
-	for (int i = 0; i < s->s_blocks_count; i++) {
+	for (int i = 0; i < s.s_blocks_count; i++) {
 		if (tst_bit(bmap, i) == 0) {
 			set_bit(bmap, i);
-			s->s_free_blocks_count--;
-			gd->bg_free_blocks_count--;
+			s.s_free_blocks_count--;
+			g.bg_free_blocks_count--;
 
-			put_block(dev, gd->bg_block_bitmap, bmap);
-			put_block(dev, GD_BLOCK, buf2);
-			put_block(dev, SUPER_BLOCK, buf1);
+			put_block(dev, g.bg_block_bitmap, bmap);
+			put_group_block(dev, g);
+			put_super_block(dev, s);
 
 			return i + 1;
 		}
@@ -139,33 +129,27 @@ int balloc(int dev)
 int idealloc(int dev, int ino)
 {
 	int r = 0;
+	char bmap[BLOCK_SIZE];
 	ino--;
 
-	char buf1[BLOCK_SIZE];
-	char buf2[BLOCK_SIZE];
-	char bmap[BLOCK_SIZE];
+	SUPER s = get_super_block(dev);
+	GD    g = get_group_block(dev);
+	get_block(dev, g.bg_inode_bitmap, bmap);
 
-	SUPER *s = (SUPER *)buf1;
-	GD *gd = (GD *)buf2;
-
-	get_block(dev, SUPER_BLOCK, buf1);
-	get_block(dev, GD_BLOCK, buf2);
-	get_block(dev, gd->bg_inode_bitmap, bmap);
-
-	if (ino >= s->s_inodes_count) {
-		printf("idealloc(): ino %d out of range %d\n", ino, s->s_inodes_count);
+	if (ino < 0 || ino >= s.s_inodes_count) {
+		printf("idealloc(): ino %d out of range %d\n", ino, s.s_inodes_count);
 		r = -1;
 	} else if (tst_bit(bmap, ino) == 0) {
 		printf("idealloc(): ino %d is not allocated\n", ino);
 		r = -2;
 	} else {
 		clr_bit(bmap, ino);
-		s->s_free_inodes_count++;
-		gd->bg_free_inodes_count++;
+		s.s_free_inodes_count++;
+		g.bg_free_inodes_count++;
 
-		put_block(dev, gd->bg_inode_bitmap, bmap);
-		put_block(dev, GD_BLOCK, buf2);
-		put_block(dev, SUPER_BLOCK, buf1);
+		put_block(dev, g.bg_inode_bitmap, bmap);
+		put_group_block(dev, g);
+		put_super_block(dev, s);
 	}
 	return r;
 }
@@ -184,33 +168,27 @@ int idealloc(int dev, int ino)
 int bdealloc(int dev, int bno)
 {
 	int r = 0;
+	char bmap[BLOCK_SIZE];
 	bno--;
 
-	char buf1[BLOCK_SIZE];
-	char buf2[BLOCK_SIZE];
-	char bmap[BLOCK_SIZE];
+	SUPER s = get_super_block(dev);
+	GD    g = get_group_block(dev);
+	get_block(dev, g.bg_block_bitmap, bmap);
 
-	SUPER *s = (SUPER *)buf1;
-	GD *gd = (GD *)buf2;
-
-	get_block(dev, SUPER_BLOCK, buf1);
-	get_block(dev, GD_BLOCK, buf2);
-	get_block(dev, gd->bg_block_bitmap, bmap);
-
-	if (bno >= s->s_blocks_count) {
-		printf("bdealloc(): bno %d out of range %d\n", bno, s->s_blocks_count);
+	if (bno < 0 || bno >= s.s_blocks_count) {
+		printf("bdealloc(): bno %d out of range %d\n", bno, s.s_blocks_count);
 		r = -1;
 	} else if (tst_bit(bmap, bno) == 0) {
 		printf("bdealloc(): bno %d is not allocated\n", bno);
 		r = -2;
 	} else {
 		clr_bit(bmap, bno);
-		s->s_free_blocks_count++;
-		gd->bg_free_blocks_count++;
+		s.s_free_blocks_count++;
+		g.bg_free_blocks_count++;
 
-		put_block(dev, gd->bg_block_bitmap, bmap);
-		put_block(dev, GD_BLOCK, buf2);
-		put_block(dev, SUPER_BLOCK, buf1);
+		put_block(dev, g.bg_block_bitmap, bmap);
+		put_group_block(dev, g);
+		put_super_block(dev, s);
 	}
 	return r;
 }

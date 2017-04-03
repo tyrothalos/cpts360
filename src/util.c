@@ -9,53 +9,57 @@
 
 static void inode_get_block(MINODE *mip)
 {
-	int dev = mip->dev;
-	int ino = mip->ino;
-
-	// get inode's group to find where inode_table is
 	char buf[BLOCK_SIZE];
-	get_block(dev, GD_BLOCK, buf);
 	GD *gd = (GD *)buf;
 
-	int inodes_per_block = BLOCK_SIZE / INODE_SIZE;
-	int blk = ((ino - 1) / inodes_per_block) + gd->bg_inode_table;
-	int off = ((ino - 1) % inodes_per_block);
-	int inode_ratio = INODE_SIZE / 128;
+	// get inode's group to find where inode_table is
+	get_block(mip->dev, GD_BLOCK, buf);
+
+	int ratio = INODE_SIZE / 128;
+	int per_block = BLOCK_SIZE / INODE_SIZE;
+	int blk = ((mip->ino - 1) / per_block) + gd->bg_inode_table;
+	int off = ((mip->ino - 1) % per_block);
 
 	// get block inode is in
 	get_block(mip->dev, blk, buf);
 	// select target inode
-	INODE *tmp = (INODE *)buf + off*inode_ratio;
+	INODE *inode = (INODE *)buf + off*ratio;
 	// copy to minode
-	mip->inode = *tmp;
+	mip->inode = *inode;
 }
 
 static void inode_put_block(MINODE *mip)
 {
-	int dev = mip->dev;
-	int ino = mip->ino;
-
-	// get inode's group to find where inode_table is
 	char buf[BLOCK_SIZE];
-	get_block(dev, GD_BLOCK, buf);
 	GD *gd = (GD *)buf;
 
-	int inodes_per_block = BLOCK_SIZE / INODE_SIZE;
-	int blk = ((ino - 1) / inodes_per_block) + gd->bg_inode_table;
-	int off = ((ino - 1) % inodes_per_block);
-	int inode_ratio = INODE_SIZE / 128;
+	// get inode's group to find where inode_table is
+	get_block(mip->dev, GD_BLOCK, buf);
+
+	int ratio = INODE_SIZE / 128;
+	int per_block = BLOCK_SIZE / INODE_SIZE;
+	int blk = ((mip->ino - 1) / per_block) + gd->bg_inode_table;
+	int off = ((mip->ino - 1) % per_block);
 
 	// get block inode is in
 	get_block(mip->dev, blk, buf);
 	// select target inode
-	INODE *tmp = (INODE *)buf + off*inode_ratio;
+	INODE *inode = (INODE *)buf + off*ratio;
 	// copy minode to inode
-	*tmp = mip->inode;
+	*inode = mip->inode;
 	// put back to disk
 	put_block(mip->dev, blk, buf);
 }
 
-static void clear_direct(int dev, unsigned int *blocks, int n)
+/*
+ * clear_direct:
+ * @dev: The device number the blocks are on.
+ * @blocks: The array of blocks to clear.
+ * @n: The size of the array.
+ *
+ * Clears the blocks in the given array.
+ */
+static void clear_direct(int dev, unsigned int blocks[], int n)
 {
 	for (int i = 0; i < n; i++) {
 		if (!blocks[i]) {
@@ -96,6 +100,34 @@ void put_block(int dev, int blk, char buf[])
 {
 	lseek(dev, (long)blk*BLOCK_SIZE, SEEK_SET);
 	write(dev, buf, BLOCK_SIZE);
+}
+
+SUPER get_super_block(int dev)
+{
+	SUPER super;
+	lseek(dev, (long)SUPER_BLOCK*BLOCK_SIZE, SEEK_SET);
+	read(dev, &super, sizeof(SUPER));
+	return super;
+}
+
+void put_super_block(int dev, SUPER super)
+{
+	lseek(dev, (long)SUPER_BLOCK*BLOCK_SIZE, SEEK_SET);
+	write(dev, &super, sizeof(SUPER));
+}
+
+GD get_group_block(int dev)
+{
+	GD group;
+	lseek(dev, (long)GD_BLOCK*BLOCK_SIZE, SEEK_SET);
+	read(dev, &group, sizeof(GD));
+	return group;
+}
+
+void put_group_block(int dev, GD group)
+{
+	lseek(dev, (long)GD_BLOCK*BLOCK_SIZE, SEEK_SET);
+	write(dev, &group, sizeof(GD));
 }
 
 void clear_blocks(MINODE *mip)
@@ -162,8 +194,8 @@ int has_perm(MINODE *mip, unsigned int perm)
  * @name: The name of the inode to search for.
  *
  * Searches for an inode with the given name inside of the given parent inode.
- * If it is found, then the inode number of the found node is returned. 
- * 
+ * If it is found, then the inode number of the found node is returned.
+ *
  * Returns: The inode number if found, otherwise 0.
  */
 int search(MINODE *parent, char *name)
@@ -214,7 +246,7 @@ int getino(int *dev, char *name)
 
 	char *tok[256];
 	int len = tokenize(str, "/", tok);
-	
+
 	MINODE *mip = iget(*dev, ino);
 	if (mip == NULL)
 		return 0;
