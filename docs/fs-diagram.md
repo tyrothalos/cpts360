@@ -1,13 +1,12 @@
-<Title>360 Week 3 Notes</Title>
-<Body bgcolor="#00cccc" text="#000000">
+# File System Organization
 
-<H1>File System Organization</H1>
+> 360 Week 3 Notes
 
-<Pre>
-                 File system Data Structure Diagram
 
-   KEEP A COPY OF THIS DIAGRAM FOR REFERENCE when designing your algorithms.
+## File system Data Structure Diagram
 
+KEEP A COPY OF THIS DIAGRAM FOR REFERENCE when designing your algorithms.
+```
 1. Running
                                                         ||*********************
      |                                                  ||
@@ -19,18 +18,18 @@
  |pid, ppid   |    |refCount |          | -------  |    ||   ================== 
  |uid         |    |MinodePtr|          | dev,ino  |    || 
  |cwd --------|    |offset   |          | refCount |    ||*********************
- |                  ===========         | dirty    |
- |fd[10]                                | mounted  |         
- | ------                      <---------| mTablePtr| 
- | ------                     |         |==========|         
- | ------                     |         |  INODE   |          
- | ------                     |         | -------  |   
- ===========                  |         |  dev,ino |   
-                              |         |  refCount|  
-                              |         |  dirty   |   
-                              |         |  mounted |   
-                              |         |  mtPtr   | 
-                              |         |==========|           
+ |                 ===========          | dirty    |
+ |fd[10]                                | mounted  |
+ | ------                     <---------| mTablePtr|
+ | ------                     |         |==========|
+ | ------                     |         |  INODE   |
+ | ------                     |         | -------  |
+ ===========                  |         |  dev,ino |
+                              |         |  refCount|
+                              |         |  dirty   |
+                              |         |  mounted |
+                              |         |  mtPtr   |
+                              |         |==========|
             PointAtRootInode  |                   
                    ^          |                   
                    |          V 
@@ -38,35 +37,23 @@
                    |  ------- 0 ------------- 1 -----
                    |  |   devNumber    |            |
                    |--|   MinodePtr    |            |
-                      --------------------------------
+                      -------------------------------
                       |   deviceName   |            |
-                      ------ Optioanl entries -------
+                      ------ Optional entries -------
                       | nblocks,ninodes|            |
                       | bmap,imap,iblk |            |
-                      ---------------------------------  
+                      -------------------------------
+```
 
 This diagram shows the data structures of the file system in an OS KERNEL
 
-1. is a PROC pointer pointing at the PROC structure of the current running 
-   process.  Each process has a Currnet Working Directory, cwd, which is
-   initialized to point at the in-memory root inode.
+1. is a PROC pointer pointing at the PROC structure of the current running process. Each process has a Current Working Directory, cwd, which is initialized to point at the in-memory root inode.
 
-2. is the PROC structure of processes. Every file operation is performed by the
-   current ruuning process.
+2. is the PROC structure of processes. Every file operation is performed by the current ruuning process.
 
-3. is the Open File Table (OFT). Each OFT entry represents an instance of an 
-   opened file. We shall discuss OFT later.
+3. is the Open File Table (OFT). Each OFT entry represents an instance of an opened file. We shall discuss OFT later.
 
-4. is the in-memory inodes array, MINODE[NMINODES]. Each minode entry contains a
-   sub-structure INODE, which is the INODE structure on disk.  Whenever a file
-   is referenced, its inode must be brought into memory. In order to ensure ONLY
-   ONE copy of every inode in in memory, a needed inode will be loaded into a 
-   MINODE slot. The (dev, ino) fields identify where the inode came from (for 
-   writing back to disk). The refCount represents how many processes are using 
-   this minode. The dirty field says whether the INODE has been modified or not.
-   If an minode is dirty, the last user of the minode must write the INODE back
-   to disk. The mounted flag says whether this DIR has been mounted on or not. 
-   If mounted on, the mTablePtr points at the MountTable entry.
+4. is the in-memory inodes array, MINODE[NMINODES]. Each minode entry contains a sub-structure INODE, which is the INODE structure on disk.  Whenever a file is referenced, its inode must be brought into memory. In order to ensure ONLY ONE copy of every inode in in memory, a needed inode will be loaded into a MINODE slot. The (dev, ino) fields identify where the inode came from (for writing back to disk). The refCount represents how many processes are using this minode. The dirty field says whether the INODE has been modified or not. If an minode is dirty, the last user of the minode must write the INODE back to disk. The mounted flag says whether this DIR has been mounted on or not. If mounted on, the mTablePtr points at the MountTable entry.
 
 5. is the MountTable (MT). Each entry represetns a device that has been 
    mounted (on a DIR).  When a file system starts, it must mount a device on
