@@ -76,7 +76,7 @@ int ialloc(int dev)
 			return i + 1;
 		}
 	}
-	printf("ialloc(): no more free inodes\n");
+	printf("%s: no more free inodes\n", __func__);
 
 	return 0;
 }
@@ -110,7 +110,7 @@ int balloc(int dev)
 			return i + 1;
 		}
 	}
-	printf("balloc(): no more free blocks\n");
+	printf("%s: no more free blocks\n", __func__);
 
 	return 0;
 }
@@ -137,10 +137,10 @@ int idealloc(int dev, int ino)
 	get_block(dev, g.bg_inode_bitmap, bmap);
 
 	if (ino < 0 || ino >= s.s_inodes_count) {
-		printf("idealloc(): ino %d out of range %d\n", ino, s.s_inodes_count);
+		printf("%s: ino %d out of range %d\n", __func__, ino, s.s_inodes_count);
 		r = -1;
 	} else if (tst_bit(bmap, ino) == 0) {
-		printf("idealloc(): ino %d is not allocated\n", ino);
+		printf("%s: ino %d is not allocated\n", __func__, ino);
 		r = -2;
 	} else {
 		clr_bit(bmap, ino);
@@ -176,10 +176,10 @@ int bdealloc(int dev, int bno)
 	get_block(dev, g.bg_block_bitmap, bmap);
 
 	if (bno < 0 || bno >= s.s_blocks_count) {
-		printf("bdealloc(): bno %d out of range %d\n", bno, s.s_blocks_count);
+		printf("%s: bno %d out of range %d\n", __func__, bno, s.s_blocks_count);
 		r = -1;
 	} else if (tst_bit(bmap, bno) == 0) {
-		printf("bdealloc(): bno %d is not allocated\n", bno);
+		printf("%s: bno %d is not allocated\n", __func__, bno);
 		r = -2;
 	} else {
 		clr_bit(bmap, bno);
