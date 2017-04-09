@@ -60,7 +60,7 @@ int ialloc(int dev)
 	char bmap[BLOCK_SIZE];
 
 	SUPER s = get_super_block(dev);
-	GD    g = get_group_block(dev);
+	GROUP g = get_group_block(dev);
 	get_block(dev, g.bg_inode_bitmap, bmap);
 
 	for (int i = 0; i < s.s_inodes_count; i++) {
@@ -94,7 +94,7 @@ int balloc(int dev)
 	char bmap[BLOCK_SIZE];
 
 	SUPER s = get_super_block(dev);
-	GD    g = get_group_block(dev);
+	GROUP g = get_group_block(dev);
 	get_block(dev, g.bg_block_bitmap, bmap);
 
 	for (int i = 0; i < s.s_blocks_count; i++) {
@@ -133,7 +133,7 @@ int idealloc(int dev, int ino)
 	ino--;
 
 	SUPER s = get_super_block(dev);
-	GD    g = get_group_block(dev);
+	GROUP g = get_group_block(dev);
 	get_block(dev, g.bg_inode_bitmap, bmap);
 
 	if (ino < 0 || ino >= s.s_inodes_count) {
@@ -172,7 +172,7 @@ int bdealloc(int dev, int bno)
 	bno--;
 
 	SUPER s = get_super_block(dev);
-	GD    g = get_group_block(dev);
+	GROUP g = get_group_block(dev);
 	get_block(dev, g.bg_block_bitmap, bmap);
 
 	if (bno < 0 || bno >= s.s_blocks_count) {

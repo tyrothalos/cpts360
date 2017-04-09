@@ -87,8 +87,8 @@ void mount(char *filesys, char *path)
 		printf("mount: failed: mount table is full\n");
 	} else {
 		char tmp[BLOCK_SIZE];
-		get_block(fd, GD_BLOCK, tmp);
-		GD *gd = (GD *)tmp;
+		get_block(fd, GROUP_BLOCK, tmp);
+		GROUP *gd = (GROUP *)tmp;
 
 		MOUNT *m = &mounttab[md];
 		m->mounted_inode = mip;

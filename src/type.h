@@ -5,8 +5,8 @@
 
 /* TYPE ALIASES */
 typedef struct ext2_super_block SUPER;
-typedef struct ext2_group_desc GD;
-typedef struct ext2_inode INODE;
+typedef struct ext2_group_desc  GROUP;
+typedef struct ext2_inode       INODE;
 typedef struct ext2_dir_entry_2 DIR;    // need this for new version of e2fs
 
 #define BLOCK_SIZE 1024
@@ -14,7 +14,7 @@ typedef struct ext2_dir_entry_2 DIR;    // need this for new version of e2fs
 
 // Block number of EXT2 FS on FD
 #define SUPER_BLOCK 1
-#define GD_BLOCK    2
+#define GROUP_BLOCK 2
 #define ROOT_INODE  2
 
 // Default dir and regular file modes

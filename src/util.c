@@ -9,10 +9,10 @@
 static void inode_get_block(MINODE *mip)
 {
 	char buf[BLOCK_SIZE];
-	GD *gd = (GD *)buf;
+	GROUP *gd = (GROUP *)buf;
 
 	// get inode's group to find where inode_table is
-	get_block(mip->dev, GD_BLOCK, buf);
+	get_block(mip->dev, GROUP_BLOCK, buf);
 
 	int ratio = INODE_SIZE / 128;
 	int per_block = BLOCK_SIZE / INODE_SIZE;
@@ -30,10 +30,10 @@ static void inode_get_block(MINODE *mip)
 static void inode_put_block(MINODE *mip)
 {
 	char buf[BLOCK_SIZE];
-	GD *gd = (GD *)buf;
+	GROUP *gd = (GROUP *)buf;
 
 	// get inode's group to find where inode_table is
-	get_block(mip->dev, GD_BLOCK, buf);
+	get_block(mip->dev, GROUP_BLOCK, buf);
 
 	int ratio = INODE_SIZE / 128;
 	int per_block = BLOCK_SIZE / INODE_SIZE;
@@ -115,17 +115,17 @@ void put_super_block(int dev, SUPER super)
 	write(dev, &super, sizeof(super));
 }
 
-GD get_group_block(int dev)
+GROUP get_group_block(int dev)
 {
-	GD group;
-	lseek(dev, (long)GD_BLOCK*BLOCK_SIZE, SEEK_SET);
+	GROUP group;
+	lseek(dev, (long)GROUP_BLOCK*BLOCK_SIZE, SEEK_SET);
 	read(dev, &group, sizeof(group));
 	return group;
 }
 
-void put_group_block(int dev, GD group)
+void put_group_block(int dev, GROUP group)
 {
-	lseek(dev, (long)GD_BLOCK*BLOCK_SIZE, SEEK_SET);
+	lseek(dev, (long)GROUP_BLOCK*BLOCK_SIZE, SEEK_SET);
 	write(dev, &group, sizeof(group));
 }
 
