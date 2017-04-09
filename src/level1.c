@@ -390,7 +390,7 @@ static int dir_is_empty(MINODE *mip)
 
 		for (int j = 0; j < BLOCK_SIZE; j += dp->rec_len) {
 			dp = (DIR *)(buf + j);
-			
+
 			if (dp->rec_len <= 0)
 				break;
 
