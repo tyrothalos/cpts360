@@ -47,10 +47,9 @@ int mount_root(char *rootname)
 	GD *gd = (GD *)buf2;
 
 	// initialize the root and process working directories
-	root = iget(fd, 2);
-	int i;
-	for (i = 0; i < NPROC; i++) {
-		proc[i].cwd = iget(fd, 2);
+	root = iget(fd, ROOT_INODE);
+	for (int i = 0; i < NPROC; i++) {
+		proc[i].cwd = iget(fd, ROOT_INODE);
 	}
 	// set running for easier reading
 	running = &proc[0];
