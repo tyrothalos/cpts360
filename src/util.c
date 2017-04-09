@@ -105,28 +105,28 @@ SUPER get_super_block(int dev)
 {
 	SUPER super;
 	lseek(dev, (long)SUPER_BLOCK*BLOCK_SIZE, SEEK_SET);
-	read(dev, &super, sizeof(SUPER));
+	read(dev, &super, sizeof(super));
 	return super;
 }
 
 void put_super_block(int dev, SUPER super)
 {
 	lseek(dev, (long)SUPER_BLOCK*BLOCK_SIZE, SEEK_SET);
-	write(dev, &super, sizeof(SUPER));
+	write(dev, &super, sizeof(super));
 }
 
 GD get_group_block(int dev)
 {
 	GD group;
 	lseek(dev, (long)GD_BLOCK*BLOCK_SIZE, SEEK_SET);
-	read(dev, &group, sizeof(GD));
+	read(dev, &group, sizeof(group));
 	return group;
 }
 
 void put_group_block(int dev, GD group)
 {
 	lseek(dev, (long)GD_BLOCK*BLOCK_SIZE, SEEK_SET);
-	write(dev, &group, sizeof(GD));
+	write(dev, &group, sizeof(group));
 }
 
 void clear_blocks(MINODE *mip)
