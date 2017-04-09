@@ -149,13 +149,12 @@ void clear_blocks(MINODE *mip)
 
 int tokenize(char *path, char *delim, char *buf[])
 {
-	int i = 0;
-	char *tmp = strtok(path, delim);
-	while (tmp) {
-		buf[i++] = tmp;
-		tmp = strtok(NULL, delim);
+	int n = 0;
+	for (char *tok = strtok(path, delim); tok != NULL;
+			tok = strtok(NULL, delim)) {
+		buf[n++] = tok;
 	}
-	return i;
+	return n;
 }
 
 /*
