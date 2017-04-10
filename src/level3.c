@@ -62,12 +62,10 @@ void print_mounttab()
  */
 void mount(char *filesys, char *path)
 {
-	int fd, md;
+	int fd = -1, md;
 	int dev, ino;
+	SUPER s;
 	MINODE *mip = NULL;
-
-	char buf[BLOCK_SIZE];
-	SUPER *s = (SUPER *)buf;
 
 	if (path[0] != '/') {
 		printf("mount: failed: may only mount relative to root\n");
@@ -75,7 +73,7 @@ void mount(char *filesys, char *path)
 		printf("mount: failed: '%s' is already mounted\n", filesys);
 	} else if (fd = open(filesys, O_RDWR), fd < 0) {
 		printf("mount: failed: could not open '%s'\n", filesys);
-	} else if (get_block(fd, SUPER_BLOCK, buf), s->s_magic != SUPER_MAGIC) {
+	} else if (s = get_super(fd), s.s_magic != SUPER_MAGIC) {
 		printf("mount: failed: filesystem is not EXT2\n");
 	} else if (file_mkdir(path) < 0) {
 		printf("mount: failed: could not create mount point\n");
@@ -86,18 +84,16 @@ void mount(char *filesys, char *path)
 	} else if (md = alloc_mount(), md < 0) {
 		printf("mount: failed: mount table is full\n");
 	} else {
-		char tmp[BLOCK_SIZE];
-		get_block(fd, GROUP_BLOCK, tmp);
-		GROUP *gd = (GROUP *)tmp;
+		GROUP g = get_group(fd);
 
 		MOUNT *m = &mounttab[md];
 		m->mounted_inode = mip;
 		m->dev = fd;
-		m->nblocks = s->s_blocks_count;
-		m->ninodes = s->s_inodes_count;
-		m->bmap = gd->bg_block_bitmap;
-		m->imap = gd->bg_inode_bitmap;
-		m->iblk = gd->bg_inode_table;
+		m->nblocks = s.s_blocks_count;
+		m->ninodes = s.s_inodes_count;
+		m->bmap = g.bg_block_bitmap;
+		m->imap = g.bg_inode_bitmap;
+		m->iblk = g.bg_inode_table;
 		strncpy(m->name, filesys, 64);
 		strncpy(m->mount_name, path, 64);
 

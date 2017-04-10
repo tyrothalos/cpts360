@@ -6,44 +6,33 @@
 
 /* UNEXPORTED FUNCTIONS */
 
-static void inode_get_block(MINODE *mip)
+static INODE *get_inode(int dev, int ino, int *blk, char buf[])
 {
-	char buf[BLOCK_SIZE];
-	GROUP *gd = (GROUP *)buf;
-
-	// get inode's group to find where inode_table is
-	get_block(mip->dev, GROUP_BLOCK, buf);
-
+	GROUP g = get_group(dev);
 	int ratio = INODE_SIZE / 128;
 	int per_block = BLOCK_SIZE / INODE_SIZE;
-	int blk = ((mip->ino - 1) / per_block) + gd->bg_inode_table;
-	int off = ((mip->ino - 1) % per_block);
+	int off = ((ino - 1) % per_block);
+	*blk    = ((ino - 1) / per_block) + g.bg_inode_table;
+	get_block(dev, *blk, buf);
+	return (INODE *)buf + off*ratio;
+}
 
-	// get block inode is in
-	get_block(mip->dev, blk, buf);
+static void inode_get_block(MINODE *mip)
+{
+	int blk;
+	char buf[BLOCK_SIZE];
 	// select target inode
-	INODE *inode = (INODE *)buf + off*ratio;
+	INODE *inode = get_inode(mip->dev, mip->ino, &blk, buf);
 	// copy to minode
 	mip->inode = *inode;
 }
 
 static void inode_put_block(MINODE *mip)
 {
+	int blk;
 	char buf[BLOCK_SIZE];
-	GROUP *gd = (GROUP *)buf;
-
-	// get inode's group to find where inode_table is
-	get_block(mip->dev, GROUP_BLOCK, buf);
-
-	int ratio = INODE_SIZE / 128;
-	int per_block = BLOCK_SIZE / INODE_SIZE;
-	int blk = ((mip->ino - 1) / per_block) + gd->bg_inode_table;
-	int off = ((mip->ino - 1) % per_block);
-
-	// get block inode is in
-	get_block(mip->dev, blk, buf);
 	// select target inode
-	INODE *inode = (INODE *)buf + off*ratio;
+	INODE *inode = get_inode(mip->dev, mip->ino, &blk, buf);
 	// copy minode to inode
 	*inode = mip->inode;
 	// put back to disk
@@ -89,19 +78,7 @@ static void clear_indirect(int dev, unsigned int *addr, int n, int depth)
 
 /* EXPORTED FUNCTIONS */
 
-void get_block(int dev, int blk, char buf[])
-{
-	lseek(dev, (long)blk*BLOCK_SIZE, SEEK_SET);
-	read(dev, buf, BLOCK_SIZE);
-}
-
-void put_block(int dev, int blk, char buf[])
-{
-	lseek(dev, (long)blk*BLOCK_SIZE, SEEK_SET);
-	write(dev, buf, BLOCK_SIZE);
-}
-
-SUPER get_super_block(int dev)
+SUPER get_super(int dev)
 {
 	SUPER super;
 	lseek(dev, (long)SUPER_BLOCK*BLOCK_SIZE, SEEK_SET);
@@ -109,13 +86,7 @@ SUPER get_super_block(int dev)
 	return super;
 }
 
-void put_super_block(int dev, SUPER super)
-{
-	lseek(dev, (long)SUPER_BLOCK*BLOCK_SIZE, SEEK_SET);
-	write(dev, &super, sizeof(super));
-}
-
-GROUP get_group_block(int dev)
+GROUP get_group(int dev)
 {
 	GROUP group;
 	lseek(dev, (long)GROUP_BLOCK*BLOCK_SIZE, SEEK_SET);
@@ -123,10 +94,28 @@ GROUP get_group_block(int dev)
 	return group;
 }
 
-void put_group_block(int dev, GROUP group)
+void get_block(int dev, int blk, char buf[])
+{
+	lseek(dev, (long)blk*BLOCK_SIZE, SEEK_SET);
+	read(dev, buf, BLOCK_SIZE);
+}
+
+void put_super(int dev, SUPER super)
+{
+	lseek(dev, (long)SUPER_BLOCK*BLOCK_SIZE, SEEK_SET);
+	write(dev, &super, sizeof(super));
+}
+
+void put_group(int dev, GROUP group)
 {
 	lseek(dev, (long)GROUP_BLOCK*BLOCK_SIZE, SEEK_SET);
 	write(dev, &group, sizeof(group));
+}
+
+void put_block(int dev, int blk, char buf[])
+{
+	lseek(dev, (long)blk*BLOCK_SIZE, SEEK_SET);
+	write(dev, buf, BLOCK_SIZE);
 }
 
 void clear_blocks(MINODE *mip)

@@ -3,14 +3,14 @@
 
 #include "type.h"
 
+
+SUPER get_super(int dev);
+GROUP get_group(int dev);
 void get_block(int dev, int blk, char buf[]);
+
+void put_super(int dev, SUPER super);
+void put_group(int dev, GROUP group);
 void put_block(int dev, int blk, char buf[]);
-
-SUPER get_super_block(int dev);
-GROUP get_group_block(int dev);
-
-void put_super_block(int dev, SUPER super);
-void put_group_block(int dev, GROUP group);
 
 int tokenize(char *path, char *delim, char *buf[]);
 int search(MINODE *iptr, char *name);

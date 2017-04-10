@@ -59,8 +59,8 @@ int ialloc(int dev)
 {
 	char bmap[BLOCK_SIZE];
 
-	SUPER s = get_super_block(dev);
-	GROUP g = get_group_block(dev);
+	SUPER s = get_super(dev);
+	GROUP g = get_group(dev);
 	get_block(dev, g.bg_inode_bitmap, bmap);
 
 	for (int i = 0; i < s.s_inodes_count; i++) {
@@ -70,8 +70,8 @@ int ialloc(int dev)
 			g.bg_free_inodes_count--;
 
 			put_block(dev, g.bg_inode_bitmap, bmap);
-			put_group_block(dev, g);
-			put_super_block(dev, s);
+			put_group(dev, g);
+			put_super(dev, s);
 
 			return i + 1;
 		}
@@ -93,8 +93,8 @@ int balloc(int dev)
 {
 	char bmap[BLOCK_SIZE];
 
-	SUPER s = get_super_block(dev);
-	GROUP g = get_group_block(dev);
+	SUPER s = get_super(dev);
+	GROUP g = get_group(dev);
 	get_block(dev, g.bg_block_bitmap, bmap);
 
 	for (int i = 0; i < s.s_blocks_count; i++) {
@@ -104,8 +104,8 @@ int balloc(int dev)
 			g.bg_free_blocks_count--;
 
 			put_block(dev, g.bg_block_bitmap, bmap);
-			put_group_block(dev, g);
-			put_super_block(dev, s);
+			put_group(dev, g);
+			put_super(dev, s);
 
 			return i + 1;
 		}
@@ -132,8 +132,8 @@ int idealloc(int dev, int ino)
 	char bmap[BLOCK_SIZE];
 	ino--;
 
-	SUPER s = get_super_block(dev);
-	GROUP g = get_group_block(dev);
+	SUPER s = get_super(dev);
+	GROUP g = get_group(dev);
 	get_block(dev, g.bg_inode_bitmap, bmap);
 
 	if (ino < 0 || ino >= s.s_inodes_count) {
@@ -148,8 +148,8 @@ int idealloc(int dev, int ino)
 		g.bg_free_inodes_count++;
 
 		put_block(dev, g.bg_inode_bitmap, bmap);
-		put_group_block(dev, g);
-		put_super_block(dev, s);
+		put_group(dev, g);
+		put_super(dev, s);
 	}
 	return r;
 }
@@ -171,8 +171,8 @@ int bdealloc(int dev, int bno)
 	char bmap[BLOCK_SIZE];
 	bno--;
 
-	SUPER s = get_super_block(dev);
-	GROUP g = get_group_block(dev);
+	SUPER s = get_super(dev);
+	GROUP g = get_group(dev);
 	get_block(dev, g.bg_block_bitmap, bmap);
 
 	if (bno < 0 || bno >= s.s_blocks_count) {
@@ -187,8 +187,8 @@ int bdealloc(int dev, int bno)
 		g.bg_free_blocks_count++;
 
 		put_block(dev, g.bg_block_bitmap, bmap);
-		put_group_block(dev, g);
-		put_super_block(dev, s);
+		put_group(dev, g);
+		put_super(dev, s);
 	}
 	return r;
 }
