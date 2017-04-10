@@ -175,15 +175,13 @@ int has_perm(MINODE *mip, unsigned int perm)
 	unsigned int mode = ip->i_mode;
 
 	if (ip->i_uid == running->uid) {
-		mode &= 00700;
-		return (((mode >> 6) & perm) == perm);
+		mode = (mode & 00700) >> 6;
 	} else if (ip->i_gid == running->gid) {
-		mode &= 00070;
-		return (((mode >> 3) & perm) == perm);
+		mode = (mode & 00070) >> 3;
 	} else {
-		mode &= 00007;
-		return ((mode & perm) == perm);
+		mode = (mode & 00007);
 	}
+	return ((mode & perm) == perm);
 }
 
 /*
